@@ -1,9 +1,9 @@
 package main
 
-import (
-	"wtfTwitter/http"
-)
+import "wtfTwitter/http"
 
 func main() {
-	http.Run()
+	//http.Run()
+	server := http.NewServer()
+	server.Run(server)
 }

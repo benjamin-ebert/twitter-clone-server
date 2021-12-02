@@ -5,7 +5,34 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"wtfTwitter/domain"
 )
+
+type Server struct {
+	router *mux.Router
+
+	AuthService domain.AuthService
+	UserService domain.UserService
+}
+
+func NewServer() *Server {
+	s := &Server{
+		router: mux.NewRouter(),
+	}
+	{
+		r := s.router.PathPrefix("/").Subrouter()
+		s.registerAuthRoutes(r)
+	}
+	s.router.Use(setContentTypeJSON)
+	return s
+}
+
+func setContentTypeJSON(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/json")
+		next.ServeHTTP(w, r)
+	})
+}
 
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	// A very simple health check.
@@ -17,9 +44,8 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, `{"alive": true}`)
 }
 
-func Run() {
-	r := mux.NewRouter()
-	r.HandleFunc("/health", HealthCheckHandler)
+func (s *Server) Run(server *Server) {
+	s.router.HandleFunc("/health", HealthCheckHandler)
 
-	log.Fatal(http.ListenAndServe("localhost:1111", r))
+	log.Fatal(http.ListenAndServe("localhost:1111", s.router))
 }
