@@ -18,9 +18,9 @@ type Auth struct {
 
 type AuthService interface {
 	FindAuthByID(ctx context.Context, id int) (*Auth, error)
-	FindAuths(ctx context.Context, filter AuthFilter) ([]*Auth, int, error)
+	//FindAuths(ctx context.Context, filter AuthFilter) ([]*Auth, int, error)
 	CreateAuth(ctx context.Context, auth *Auth) error
-	DeleteAuth(ctx context.Context, id int) error
+	//DeleteAuth(ctx context.Context, id int) error
 }
 
 type AuthFilter struct {

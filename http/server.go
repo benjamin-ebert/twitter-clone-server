@@ -29,7 +29,11 @@ func NewServer() *Server {
 
 func setContentTypeJSON(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
+		_, err := io.WriteString(w, `{"db": "not yet set up"`)
+		if err != nil {
+			return 
+		}
 		next.ServeHTTP(w, r)
 	})
 }
