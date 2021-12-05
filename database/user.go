@@ -8,7 +8,9 @@ import (
 	"regexp"
 	"strings"
 	"unicode/utf8"
+
 	"wtfTwitter/domain"
+	"wtfTwitter/errs"
 	"wtfTwitter/security"
 )
 
@@ -76,14 +78,14 @@ func (uv *userValidator) CreateUser(ctx context.Context, user *domain.User) erro
 	err := runUserValFuncs(user,
 		uv.passwordRequired,
 		uv.passwordMinLength,
-		uv.bcryptPassword,
+		uv.passwordBcrypt,
 		uv.passwordHashRequired,
-		uv.setRememberIfUnset,
+		uv.rememberSetIfUnset,
 		uv.rememberMinBytes,
-		uv.hmacRemember,
+		uv.rememberHmac,
 		uv.rememberHashRequired,
-		uv.normalizeEmail,
-		uv.requireEmail,
+		uv.emailNormalize,
+		uv.emailRequired,
 		uv.emailFormat,
 		uv.emailIsAvail)
 	if err != nil {
@@ -97,13 +99,13 @@ func (uv *userValidator) UpdateUser(ctx context.Context, user *domain.User) erro
 	fmt.Println("INSIDE userValidator@UPDATE: ", user)
 	err := runUserValFuncs(user,
 		uv.passwordMinLength,
-		uv.bcryptPassword,
+		uv.passwordBcrypt,
 		uv.passwordHashRequired,
 		uv.rememberMinBytes,
-		uv.hmacRemember,
+		uv.rememberHmac,
 		uv.rememberHashRequired,
-		uv.normalizeEmail,
-		uv.requireEmail,
+		uv.emailNormalize,
+		uv.emailRequired,
 		uv.emailFormat,
 		uv.emailIsAvail)
 	if err != nil {
@@ -127,27 +129,47 @@ func runUserValFuncs(user *domain.User, fns ...userValFunc) error {
 	return nil
 }
 
-func (uv *userValidator) passwordRequired(user *domain.User) error {
-	if user.Password == "" {
-		return security.ErrPasswordRequired
-	}
-	return nil
-}
-
-func (uv *userValidator) passwordMinLength(user *domain.User) error {
-	if user.Password == "" {
+func (uv *userValidator) emailFormat(user *domain.User) error {
+	if user.Email == "" {
 		return nil
 	}
-	if utf8.RuneCountInString(user.Password) < 8 {
-		return security.ErrPasswordTooShort
+	if !uv.emailRegex.MatchString(user.Email) {
+		return errs.EmailInvalid
 	}
 	return nil
 }
 
-// bcryptPassword hashes a user's password with a
+func (uv *userValidator) emailIsAvail(user *domain.User) error {
+	existing, err := uv.userGorm.FindUserByEmail(user.Email)
+	if err == errs.NotFound {
+		return nil // Address is not taken.
+	}
+	if err != nil {
+		return err
+	}
+	if user.ID != existing.ID { // If they are the same, it's just an update.
+		return errs.EmailTaken
+	}
+	return nil
+}
+
+func (uv *userValidator) emailNormalize(user *domain.User) error {
+	user.Email = strings.ToLower(user.Email)
+	user.Email = strings.TrimSpace(user.Email)
+	return nil
+}
+
+func (uv *userValidator) emailRequired(user *domain.User) error {
+	if user.Email == "" {
+		return errs.EmailRequired
+	}
+	return nil
+}
+
+// passwordBcrypt hashes a user's password with a
 // predefined pepper (userPwPepper) and bcrypts it,
 // if the Password field is not the empty string.
-func (uv *userValidator) bcryptPassword(user *domain.User) error {
+func (uv *userValidator) passwordBcrypt(user *domain.User) error {
 	if user.Password == "" {
 		return nil
 	}
@@ -163,20 +185,40 @@ func (uv *userValidator) bcryptPassword(user *domain.User) error {
 
 func (uv *userValidator) passwordHashRequired(user *domain.User) error {
 	if user.PasswordHash == "" {
-		return security.ErrPasswordRequired
+		return errs.PasswordRequired
 	}
 	return nil
 }
 
-func (uv *userValidator) setRememberIfUnset(user *domain.User) error {
-	if user.Remember != "" {
+func (uv *userValidator) passwordMinLength(user *domain.User) error {
+	if user.Password == "" {
 		return nil
 	}
-	token, err := security.RememberToken()
-	if err != nil {
-		return err
+	if utf8.RuneCountInString(user.Password) < 8 {
+		return errs.PasswordTooShort
 	}
-	user.Remember = token
+	return nil
+}
+
+func (uv *userValidator) passwordRequired(user *domain.User) error {
+	if user.Password == "" {
+		return errs.PasswordRequired
+	}
+	return nil
+}
+
+func (uv *userValidator) rememberHashRequired(user *domain.User) error {
+	if user.RememberHash == "" {
+		return errs.RememberRequired
+	}
+	return nil
+}
+
+func (uv *userValidator) rememberHmac(user *domain.User) error {
+	if user.Remember == "" {
+		return nil
+	}
+	user.RememberHash = uv.hmac.Hash(user.Remember)
 	return nil
 }
 
@@ -189,60 +231,20 @@ func (uv *userValidator) rememberMinBytes(user *domain.User) error {
 		return err
 	}
 	if n < 32 {
-		return security.ErrRememberTooShort
+		return errs.RememberTooShort
 	}
 	return nil
 }
 
-func (uv *userValidator) hmacRemember(user *domain.User) error {
-	if user.Remember == "" {
+func (uv *userValidator) rememberSetIfUnset(user *domain.User) error {
+	if user.Remember != "" {
 		return nil
 	}
-	user.RememberHash = uv.hmac.Hash(user.Remember)
-	return nil
-}
-
-func (uv *userValidator) rememberHashRequired(user *domain.User) error {
-	if user.RememberHash == "" {
-		return security.ErrRememberRequired
-	}
-	return nil
-}
-
-func (uv *userValidator) normalizeEmail(user *domain.User) error {
-	user.Email = strings.ToLower(user.Email)
-	user.Email = strings.TrimSpace(user.Email)
-	return nil
-}
-
-func (uv *userValidator) requireEmail(user *domain.User) error {
-	if user.Email == "" {
-		return security.ErrEmailRequired
-	}
-	return nil
-}
-
-func (uv *userValidator) emailFormat(user *domain.User) error {
-	if user.Email == "" {
-		return nil
-	}
-	if !uv.emailRegex.MatchString(user.Email) {
-		return security.ErrEmailInvalid
-	}
-	return nil
-}
-
-func (uv *userValidator) emailIsAvail(user *domain.User) error {
-	existing, err := uv.userGorm.FindUserByEmail(user.Email)
-	if err == security.ErrNotFound {
-		return nil
-	}
+	token, err := security.RememberToken()
 	if err != nil {
 		return err
 	}
-	if user.ID != existing.ID {
-		return security.ErrEmailTaken
-	}
+	user.Remember = token
 	return nil
 }
 
@@ -270,7 +272,7 @@ func (g *userGorm) FindUserByEmail(email string) (*domain.User, error) {
 func first(db *gorm.DB, dst interface{}) error {
 	err := db.First(dst).Error
 	if err == gorm.ErrRecordNotFound {
-		return security.ErrNotFound
+		return errs.NotFound
 	}
 	return err
 }
