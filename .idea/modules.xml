@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../lenslocked.com-master/.idea/lenslocked.com-master.iml" filepath="$PROJECT_DIR$/../lenslocked.com-master/.idea/lenslocked.com-master.iml" />
       <module fileurl="file://$PROJECT_DIR$/../wtf/.idea/wtf.iml" filepath="$PROJECT_DIR$/../wtf/.idea/wtf.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/wtfTwitter.iml" filepath="$PROJECT_DIR$/.idea/wtfTwitter.iml" />
     </modules>

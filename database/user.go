@@ -9,9 +9,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"wtfTwitter/auth"
 	"wtfTwitter/domain"
 	"wtfTwitter/errs"
-	"wtfTwitter/security"
 )
 
 var _ domain.UserService = (*UserService)(nil)
@@ -19,7 +19,7 @@ var _ domain.UserService = (*UserService)(nil)
 func NewUserService(db *gorm.DB) *UserService {
 	return &UserService{
 		userValidator{
-			hmac:     security.NewHMAC("blerz"),
+			hmac:     auth.NewHMAC("blerz"),
 			pepper:   "blerz",
 			emailRegex: regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
 
@@ -35,7 +35,7 @@ type UserService struct {
 }
 
 type userValidator struct {
-	hmac security.HMAC
+	hmac auth.HMAC
 	pepper string
 	emailRegex *regexp.Regexp
 	userGorm
@@ -112,6 +112,16 @@ func (uv *userValidator) UpdateUser(ctx context.Context, user *domain.User) erro
 		return err
 	}
 	return uv.userGorm.UpdateUser(ctx, user)
+}
+
+func (uv *userValidator) FindUserByRemember(token string) (*domain.User, error) {
+	user := domain.User{
+		Remember: token,
+	}
+	if err := runUserValFuncs(&user, uv.rememberHmac); err != nil {
+		return nil, err
+	}
+	return uv.userGorm.FindUserByRemember(user.RememberHash)
 }
 
 type userValFunc func(user *domain.User) error
@@ -226,7 +236,7 @@ func (uv *userValidator) rememberMinBytes(user *domain.User) error {
 	if user.Remember == "" {
 		return nil
 	}
-	n, err := security.NBytes(user.Remember)
+	n, err := auth.NBytes(user.Remember)
 	if err != nil {
 		return err
 	}
@@ -240,7 +250,7 @@ func (uv *userValidator) rememberSetIfUnset(user *domain.User) error {
 	if user.Remember != "" {
 		return nil
 	}
-	token, err := security.RememberToken()
+	token, err := auth.RememberToken()
 	if err != nil {
 		return err
 	}
@@ -265,6 +275,13 @@ func (g *userGorm) UpdateUser(ctx context.Context, user *domain.User) error {
 func (g *userGorm) FindUserByEmail(email string) (*domain.User, error) {
 	var user domain.User
 	db := g.db.Where("email = ?", email)
+	err := first(db, &user)
+	return &user, err
+}
+
+func (g *userGorm) FindUserByRemember(rememberHash string) (*domain.User, error) {
+	var user domain.User
+	db := g.db.Where("remember_hash = ?", rememberHash)
 	err := first(db, &user)
 	return &user, err
 }

@@ -8,16 +8,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"io"
 	"net/http"
+	"wtfTwitter/auth"
 	"wtfTwitter/domain"
 	"wtfTwitter/errs"
-	"wtfTwitter/security"
 )
 
 func (s *Server) registerAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/register", s.handleRegister).Methods("POST")
 	r.HandleFunc("/login", s.handleLogin).Methods("POST")
 	r.HandleFunc("/logout", s.handleLogout).Methods("POST")
-	r.HandleFunc("/profile", s.handleProfile).Methods("PUT")
+	r.HandleFunc("/profile", s.reqUserMw.ApplyFn(s.handleProfile)).Methods("GET")
 }
 
 func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -74,13 +74,17 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
-	panic("implement me")
+	fruits := make(map[string]int)
+	fruits["Apples"] = 25
+	fruits["Oranges"] = 10
+
+	json.NewEncoder(w).Encode(&fruits)
 }
 
 // signIn is used to sign the given user in via cookies
 func (s *Server) signIn(w http.ResponseWriter, ctx context.Context, user *domain.User) error {
 	if user.Remember == "" {
-		token, err := security.RememberToken()
+		token, err := auth.RememberToken()
 		if err != nil {
 			return err
 		}

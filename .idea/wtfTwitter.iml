@@ -6,5 +6,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="wtf" />
+    <orderEntry type="module" module-name="lenslocked.com-master" />
   </component>
 </module>
