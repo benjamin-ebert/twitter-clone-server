@@ -11,7 +11,7 @@ import (
 type Server struct {
 	router *mux.Router
 
-	AuthService domain.AuthService
+	OAuthService domain.OAuthService
 	UserService domain.UserService
 }
 
@@ -22,6 +22,7 @@ func NewServer() *Server {
 	{
 		r := s.router.PathPrefix("/").Subrouter()
 		s.registerAuthRoutes(r)
+		s.registerOAuthRoutes(r)
 	}
 	s.router.Use(setContentTypeJSON)
 	return s

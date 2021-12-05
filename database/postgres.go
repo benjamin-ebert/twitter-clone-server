@@ -10,7 +10,7 @@ import (
 )
 
 type DB struct {
-	db *gorm.DB
+	Gorm *gorm.DB
 	//ctx context.Context
 
 	DSN string
@@ -27,13 +27,17 @@ func Open(db *DB) (err error) {
 	if db.DSN == "" {
 		return fmt.Errorf("dsn required")
 	}
-	db.db, err = gorm.Open(postgres.Open(db.DSN), &gorm.Config{
+	db.Gorm, err = gorm.Open(postgres.Open(db.DSN), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
 		return fmt.Errorf("err opening gorm postgres connection: %w", err)
 	}
-	if err := db.db.AutoMigrate(domain.User{}, domain.Auth{}); err != nil {
+	err = db.Gorm.Migrator().DropTable(domain.User{}, domain.OAuth{})
+	if err != nil {
+		return err
+	}
+	if err := db.Gorm.AutoMigrate(domain.User{}, domain.OAuth{}); err != nil {
 		return fmt.Errorf("err migrating: %w", err)
 	}
 	return nil

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type Auth struct {
+type OAuth struct {
 	ID int `json:"id"`
 	UserID int `json:"user_id"`
 	User *User `json:"user"`
@@ -16,14 +16,14 @@ type Auth struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type AuthService interface {
-	FindAuthByID(ctx context.Context, id int) (*Auth, error)
-	//FindAuths(ctx context.Context, filter AuthFilter) ([]*Auth, int, error)
-	CreateAuth(ctx context.Context, auth *Auth) error
-	//DeleteAuth(ctx context.Context, id int) error
+type OAuthService interface {
+	FindOAuthByID(ctx context.Context, id int) (*OAuth, error)
+	//FindOAuths(ctx context.Context, filter OAuthFilter) ([]*OAuth, int, error)
+	CreateOAuth(ctx context.Context, oauth *OAuth) error
+	//DeleteOAuth(ctx context.Context, id int) error
 }
 
-type AuthFilter struct {
+type OAuthFilter struct {
 	ID *int `json:"id"`
 	UserID *int `json:"user_id"`
 	User *string `json:"user"`

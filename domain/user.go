@@ -9,19 +9,22 @@ type User struct {
 	ID int `json:"id"`
 	Name string `json:"name"`
 	Email string `json:"email"`
-
+	Password string `json:"password"`
+	PasswordHash string `json:"password_hash"`
+	Remember string `json:"remember"`
+	RememberHash string `json:"remember_hash"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	Auths []*Auth `json:"auths"`
+	OAuths []*OAuth `json:"oauths"`
 }
 
 type UserService interface {
-	FindUserByID(ctx context.Context, id int) (*User, error)
-	FindUsers(ctx context.Context, filter UserFilter) ([]*User, int, error)
+	//FindUserByID(ctx context.Context, id int) (*User, error)
+	//FindUsers(ctx context.Context, filter UserFilter) ([]*User, int, error)
 	CreateUser(ctx context.Context, user *User) error
-	UpdateUser(ctx context.Context, id int, upd *UserUpdate) (*User, error)
-	DeleteUser(ctx context.Context, id int) error
+	UpdateUser(ctx context.Context, user *User) error
+	//DeleteUser(ctx context.Context, id int) error
 }
 
 type UserFilter struct {
