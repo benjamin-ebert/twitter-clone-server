@@ -8,6 +8,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"io"
 	"net/http"
+	"time"
 	"wtfTwitter/auth"
 	"wtfTwitter/domain"
 	"wtfTwitter/errs"
@@ -18,6 +19,7 @@ func (s *Server) registerAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/login", s.handleLogin).Methods("POST")
 	r.HandleFunc("/logout", s.handleLogout).Methods("POST")
 	r.HandleFunc("/profile", s.reqUserMw.ApplyFn(s.handleProfile)).Methods("GET")
+	r.HandleFunc("/home", s.handleHome).Methods("GET")
 }
 
 func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -38,9 +40,12 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("err signing in new user: ", err)
 	}
-	err = json.NewEncoder(w).Encode(user)
+
+	response := make(map[string]string)
+	response["message"] = "successfully registered"
+	err = json.NewEncoder(w).Encode(&response)
 	if err != nil {
-		fmt.Println("err returning new user as json: ", err)
+		fmt.Println("err returning success message as json: ", err)
 	}
 }
 
@@ -67,10 +72,37 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("Worked like a charm")
+
+	response := make(map[string]string)
+	response["message"] = "successfully logged in"
+	err = json.NewEncoder(w).Encode(&response)
+	if err != nil {
+		fmt.Println("err returning success message as json: ", err)
+	}
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
-	panic("implement me")
+	cookie := http.Cookie{
+		Name: "remember_token",
+		Value: "",
+		Expires: time.Now(),
+		HttpOnly: true,
+	}
+	http.SetCookie(w, &cookie)
+	user := auth.GetUser(r.Context())
+	token, _ := auth.RememberToken()
+	user.Remember = token
+	err := s.UserService.UpdateUser(r.Context(), user)
+	if err != nil {
+		fmt.Println("err updating user with new remember token: ", err)
+	}
+	//http.Redirect(w, r, "/profile", http.StatusFound)
+	response := make(map[string]string)
+	response["message"] = "successfully logged out"
+	err = json.NewEncoder(w).Encode(&response)
+	if err != nil {
+		fmt.Println("err returning success message as json: ", err)
+	}
 }
 
 func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +110,15 @@ func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 	fruits["Apples"] = 25
 	fruits["Oranges"] = 10
 
-	json.NewEncoder(w).Encode(&fruits)
+	user := auth.GetUser(r.Context())
+
+	json.NewEncoder(w).Encode(&user)
+}
+
+func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
+	response := make(map[string]string)
+	response["message"] = "welcome home"
+	json.NewEncoder(w).Encode(&response)
 }
 
 // signIn is used to sign the given user in via cookies

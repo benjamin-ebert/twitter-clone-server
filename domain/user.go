@@ -9,9 +9,9 @@ type User struct {
 	ID int `json:"id"`
 	Name string `json:"name"`
 	Email string `json:"email"`
-	Password string `json:"password"`
+	Password string `json:"password" gorm:"-"`
 	PasswordHash string `json:"password_hash"`
-	Remember string `json:"remember"`
+	Remember string `json:"remember" gorm:"-"`
 	RememberHash string `json:"remember_hash"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
