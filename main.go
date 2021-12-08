@@ -29,11 +29,9 @@ func main() {
 	}
 
 	userService := database.NewUserService(db.Gorm)
-	//oauthService := database.NewOAuthService(db.Gorm)
-
 	server := http.NewServer(userService)
 	//server.UserService = userService
 	//server.OAuthService = oauthService
 
-	server.Run(server)
+	server.Run()
 }

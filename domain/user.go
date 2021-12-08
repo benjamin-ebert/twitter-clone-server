@@ -15,8 +15,6 @@ type User struct {
 	RememberHash string `json:"remember_hash"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-
-	OAuths []*OAuth `json:"oauths"`
 }
 
 type UserService interface {

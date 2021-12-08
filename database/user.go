@@ -250,7 +250,7 @@ func (uv *userValidator) rememberSetIfUnset(user *domain.User) error {
 	if user.Remember != "" {
 		return nil
 	}
-	token, err := auth.RememberToken()
+	token, err := auth.MakeRememberToken()
 	if err != nil {
 		return err
 	}

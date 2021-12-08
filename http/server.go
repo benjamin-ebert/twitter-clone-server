@@ -4,40 +4,34 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
-	"wtfTwitter/auth"
 	"wtfTwitter/database"
 	"wtfTwitter/domain"
 )
 
 type Server struct {
 	router *mux.Router
-
-	OAuthService domain.OAuthService
-	UserService domain.UserService
-	userMw auth.User
-	reqUserMw auth.RequireUser
+	us domain.UserService
+	//userMw auth.UserMw
+	//requireUserMw auth.RequireUserMw
 }
 
 func NewServer(us *database.UserService) *Server {
+	//userMw := auth.UserMw{ UserService: us }
+	//requireUserMw := auth.RequireUserMw{ UserMw: userMw }
+
 	s := &Server{
 		router: mux.NewRouter(),
+		us: us,
+		//userMw: userMw,
+		//requireUserMw: requireUserMw,
 	}
+
 	{
 		r := s.router.PathPrefix("/").Subrouter()
 		s.registerAuthRoutes(r)
-		s.registerOAuthRoutes(r)
 	}
-	s.UserService = us
-	userMw := auth.User{
-		UserService: s.UserService,
-	}
-	reqUserMw := auth.RequireUser{
-		User: userMw,
-	}
-	s.userMw = userMw
-	s.reqUserMw = reqUserMw
 
-	s.router.Use(setContentTypeJSON)
+	s.router.Use(setContentTypeJSON, s.authUser)
 	return s
 }
 
@@ -48,6 +42,7 @@ func setContentTypeJSON(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) Run(server *Server) {
-	log.Fatal(http.ListenAndServe("localhost:1111", s.userMw.Apply(s.router)))
+func (s *Server) Run() {
+	//log.Fatal(http.ListenAndServe("localhost:1111", s.userMw.Apply(s.router)))
+	log.Fatal(http.ListenAndServe("localhost:1111", s.router))
 }

@@ -40,8 +40,8 @@ func String(nBytes int) (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-// RememberToken is a helper function designed to generate
+// MakeRememberToken is a helper function designed to generate
 // remember tokens of a predetermined byte size.
-func RememberToken() (string, error) {
+func MakeRememberToken() (string, error) {
 	return String(RememberTokenBytes)
 }
