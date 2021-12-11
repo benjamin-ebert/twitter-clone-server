@@ -258,30 +258,30 @@ func (uv *userValidator) rememberSetIfUnset(user *domain.User) error {
 	return nil
 }
 
-func (g *userGorm) CreateUser(ctx context.Context, user *domain.User) error {
+func (ug *userGorm) CreateUser(ctx context.Context, user *domain.User) error {
 	fmt.Println("INSIDE userGorm@CREATE: ", user)
-	err := g.db.Create(user).Error
+	err := ug.db.Create(user).Error
 	if err != nil {
 		 return err
 	}
 	return nil
 }
 
-func (g *userGorm) UpdateUser(ctx context.Context, user *domain.User) error {
+func (ug *userGorm) UpdateUser(ctx context.Context, user *domain.User) error {
 	fmt.Println("INSIDE userGorm@UPDATE: ", user)
-	return g.db.Save(user).Error
+	return ug.db.Save(user).Error
 }
 
-func (g *userGorm) FindUserByEmail(email string) (*domain.User, error) {
+func (ug *userGorm) FindUserByEmail(email string) (*domain.User, error) {
 	var user domain.User
-	db := g.db.Where("email = ?", email)
+	db := ug.db.Where("email = ?", email)
 	err := first(db, &user)
 	return &user, err
 }
 
-func (g *userGorm) FindUserByRemember(rememberHash string) (*domain.User, error) {
+func (ug *userGorm) FindUserByRemember(rememberHash string) (*domain.User, error) {
 	var user domain.User
-	db := g.db.Where("remember_hash = ?", rememberHash)
+	db := ug.db.Where("remember_hash = ?", rememberHash)
 	err := first(db, &user)
 	return &user, err
 }
