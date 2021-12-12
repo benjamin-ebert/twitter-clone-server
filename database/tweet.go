@@ -34,7 +34,9 @@ type tweetGorm struct {
 func (tv *tweetValidator) CreateTweet(tweet *domain.Tweet) error {
 	err := runTweetValFns(tweet,
 		tv.contentMinLength,
-		tv.contentMaxLength)
+		tv.contentMaxLength,
+		tv.repliedToTweetExists,
+		tv.retweetedTweetExists)
 	if err != nil {
 		return err
 	}
@@ -61,6 +63,26 @@ func (tv *tweetValidator) contentMinLength(tweet *domain.Tweet) error {
 func (tv *tweetValidator) contentMaxLength(tweet *domain.Tweet) error {
 	if utf8.RuneCountInString(tweet.Content) > 280 {
 		return errs.ContentTooLong
+	}
+	return nil
+}
+
+func (tv *tweetValidator) repliedToTweetExists(tweet *domain.Tweet) error {
+	if tweet.RepliesToID > 0 {
+		err := tv.db.First(&domain.Tweet{ID: tweet.RepliesToID}).Error
+		if err != nil {
+			return errs.RepliedToTweetDoesNotExist
+		}
+	}
+	return nil
+}
+
+func (tv *tweetValidator) retweetedTweetExists(tweet *domain.Tweet) error {
+	if tweet.RetweetsID > 0 {
+		err := tv.db.First(&domain.Tweet{ID: tweet.RetweetsID}).Error
+		if err != nil {
+			return errs.RetweetedTweetDoesNotExist
+		}
 	}
 	return nil
 }
