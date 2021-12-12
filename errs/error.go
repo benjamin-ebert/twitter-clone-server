@@ -31,6 +31,10 @@ const (
 	ContentTooShort modelError = "models: content must not be empty"
 	ContentTooLong modelError ="models: content must not have more than 280 characters"
 
+	FollowAlreadyExists modelError = "models: this follow already exists"
+	FollowedDoesNotExist modelError = "models: user to be followed does not exist"
+	FollowedIsFollower modelError = "models: followed and follower are the same user"
+
 	// IDInvalid is returned when an invalid ID is provided
 	// to a method like Delete.
 	IDInvalid privateError = "models: ID provided was invalid"

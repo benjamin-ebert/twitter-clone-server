@@ -12,20 +12,22 @@ type Server struct {
 	router *mux.Router
 	us domain.UserService
 	ts domain.TweetService
+	fs domain.FollowService
 }
 
-func NewServer(us *database.UserService, ts *database.TweetService) *Server {
+func NewServer(us *database.UserService, ts *database.TweetService, fs *database.FollowService) *Server {
 
 	s := &Server{
 		router: mux.NewRouter(),
 		us: us,
 		ts: ts,
+		fs: fs,
 	}
 
-	authRouter := s.router.PathPrefix("/").Subrouter()
-	s.registerAuthRoutes(authRouter)
+	s.registerAuthRoutes(s.router)
 	tweetRouter := s.router.PathPrefix("/tweet").Subrouter()
 	s.registerTweetRoutes(tweetRouter)
+	s.registerFollowRoutes(s.router)
 
 	s.router.Use(setContentTypeJSON, s.authUser)
 	return s

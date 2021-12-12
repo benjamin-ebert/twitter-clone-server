@@ -7,7 +7,7 @@ import (
 	"wtfTwitter/errs"
 )
 
-var _ domain.TweetService = (*TweetService)(nil)
+var _ domain.TweetService = &TweetService{}
 
 func NewTweetService(db *gorm.DB) *TweetService {
 	return &TweetService{

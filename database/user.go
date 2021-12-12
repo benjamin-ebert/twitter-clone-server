@@ -14,7 +14,8 @@ import (
 	"wtfTwitter/errs"
 )
 
-var _ domain.UserService = (*UserService)(nil)
+//var _ domain.UserService = (*UserService)(nil)
+var _ domain.UserService = &UserService{}
 
 func NewUserService(db *gorm.DB) *UserService {
 	return &UserService{
