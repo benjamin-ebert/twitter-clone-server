@@ -13,6 +13,7 @@ type User struct {
 	PasswordHash string `json:"password_hash"`
 	Remember string `json:"remember" gorm:"-"`
 	RememberHash string `json:"remember_hash"`
+	Tweets []Tweet `json:"tweets"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

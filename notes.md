@@ -3,9 +3,10 @@
 - [x] auth system
 - [x] create tweets
 - [x] follow / unfollow
-- [ ] retweet
-- [ ] reply
+- [x] reply
+- [x] retweet
 - [ ] like
+- [ ] list tweets with replies/-tweets
 - [ ] oauth
 - [ ] image uploads
 - [ ] messages
