@@ -1,12 +1,21 @@
 # Twitter Clone
 
 - [x] auth system
-- [x] create tweets
+  - [ ] proper user json fields
+- [ ] tweets
+  - [x] create
+  - [ ] update?
+  - [ ] delete 
+    - allow only if user created it!
+    - cascade properly?
+  - [ ] list
 - [x] follow / unfollow
+  - [ ] declare proper self-ref. m2m with gorm?
 - [x] reply
 - [x] retweet
-- [ ] like
-- [ ] list tweets with replies/-tweets
-- [ ] oauth
+- [ ] like 
+  - [ ] validate
+  - [ ] delete
 - [ ] image uploads
+- [ ] oauth
 - [ ] messages

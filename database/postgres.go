@@ -37,7 +37,7 @@ func Open(db *DB) (err error) {
 	//if err != nil {
 	//	return err
 	//}
-	if err := db.Gorm.AutoMigrate(domain.User{}, domain.Tweet{}, domain.Follow{}); err != nil {
+	if err := db.Gorm.AutoMigrate(domain.User{}, domain.Tweet{}, domain.Follow{}, domain.Like{}); err != nil {
 		return fmt.Errorf("err migrating: %w", err)
 	}
 	return nil

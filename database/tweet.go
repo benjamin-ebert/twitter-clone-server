@@ -33,14 +33,22 @@ type tweetGorm struct {
 
 func (tv *tweetValidator) CreateTweet(tweet *domain.Tweet) error {
 	err := runTweetValFns(tweet,
-		tv.contentMinLength,
-		tv.contentMaxLength,
 		tv.repliedToTweetExists,
-		tv.retweetedTweetExists)
+		tv.retweetedTweetExists,
+		tv.contentMinLength,
+		tv.contentMaxLength)
 	if err != nil {
 		return err
 	}
 	return tv.tweetGorm.CreateTweet(tweet)
+}
+
+func (tv *tweetValidator) DeleteTweet(tweet *domain.Tweet) error {
+	err := runTweetValFns(tweet, tv.idValid)
+	if err != nil {
+		return err
+	}
+	return tv.tweetGorm.DeleteTweet(tweet)
 }
 
 type tweetValFn = func(tweet *domain.Tweet) error
@@ -67,6 +75,13 @@ func (tv *tweetValidator) contentMaxLength(tweet *domain.Tweet) error {
 	return nil
 }
 
+func (tv *tweetValidator) idValid(tweet *domain.Tweet) error {
+	if tweet.ID <= 0 {
+		return errs.IDInvalid
+	}
+	return nil
+}
+
 func (tv *tweetValidator) repliedToTweetExists(tweet *domain.Tweet) error {
 	if tweet.RepliesToID > 0 {
 		err := tv.db.First(&domain.Tweet{ID: tweet.RepliesToID}).Error
@@ -79,16 +94,47 @@ func (tv *tweetValidator) repliedToTweetExists(tweet *domain.Tweet) error {
 
 func (tv *tweetValidator) retweetedTweetExists(tweet *domain.Tweet) error {
 	if tweet.RetweetsID > 0 {
-		err := tv.db.First(&domain.Tweet{ID: tweet.RetweetsID}).Error
+		var retweetedTweet domain.Tweet
+		err := tv.tweetGorm.db.First(&retweetedTweet, "id = ?", tweet.RetweetsID).Error
 		if err != nil {
 			return errs.RetweetedTweetDoesNotExist
 		}
+		tweet.Content = retweetedTweet.Content
 	}
 	return nil
 }
 
 func (tg *tweetGorm) CreateTweet(tweet *domain.Tweet) error {
 	err := tg.db.Create(tweet).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tg *tweetGorm) DeleteTweet(tweet *domain.Tweet) error {
+	var reply domain.Tweet
+	var retweet domain.Tweet
+	// Delete direct replies to the tweet (not cascading further)
+	err := tg.db.Delete(&reply, "replies_to_id = ?", tweet.ID).Error
+	if err != nil {
+		return err
+	}
+	// Delete direct retweets of the tweet (not cascading further)
+	err = tg.db.Delete(&retweet, "retweets_id = ?", tweet.ID).Error
+	if err != nil {
+		return err
+	}
+	// Delete likes of the tweet
+	var like domain.Like
+	err = tg.db.Delete(&like, "tweet_id = ?", tweet.ID).Error
+	if err != nil {
+		return err
+	}
+	// Delete the tweet
+	//err = tg.db.Delete(tweet).Error
+	//err = tg.db.Where("id = ? AND user_id = ?", tweet.ID, tweet.UserID).Delete(tweet).Error
+	err = tg.db.Delete(tweet, "id = ? AND user_id = ?", tweet.ID, tweet.UserID).Error
 	if err != nil {
 		return err
 	}

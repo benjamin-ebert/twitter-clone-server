@@ -15,8 +15,9 @@ func main() {
 	userService := database.NewUserService(db.Gorm)
 	twitterService := database.NewTweetService(db.Gorm)
 	followService := database.NewFollowService(db.Gorm)
+	likeService := database.NewLikeService(db.Gorm)
 
-	server := http.NewServer(userService, twitterService, followService)
+	server := http.NewServer(userService, twitterService, followService, likeService)
 
 	server.Run()
 }

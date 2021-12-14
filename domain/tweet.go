@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"gorm.io/gorm"
+	"time"
+)
 
 type Tweet struct {
 	ID int `json:"id"`
@@ -12,13 +15,16 @@ type Tweet struct {
 	//RetweetsID *int `json:"retweets_id"`
 	RepliesToID int `json:"replies_to_id,omitempty" gorm:"default:null"`
 	RetweetsID int `json:"retweets_id,omitempty" gorm:"default:null"`
-	Replies []Tweet `json:"replies,omitempty" gorm:"foreignKey:RepliesToID"`
-	Retweets []Tweet `json:"retweets,omitempty" gorm:"foreignKey:RetweetsID"`
+	Replies []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`
+	Retweets []Tweet `json:"retweets" gorm:"foreignKey:RetweetsID"`
+	Likes []Like `json:"likes" gorm:"foreignKey:TweetID"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	gorm.DeletedAt `json:"deleted_at"`
 }
 
 type TweetService interface {
 	CreateTweet (tweet *Tweet) error
+	DeleteTweet (tweet *Tweet) error
 }

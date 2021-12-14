@@ -13,9 +13,11 @@ type User struct {
 	PasswordHash string `json:"password_hash"`
 	Remember string `json:"remember" gorm:"-"`
 	RememberHash string `json:"remember_hash"`
-	Tweets []Tweet `json:"tweets"`
+	Tweets []Tweet `json:"tweets" gorm:"foreignKey:UserID"`
+	Likes []Like `json:"likes" gorm:"foreignKey:UserID"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	//gorm.DeletedAt `json:"deleted_at"`
 }
 
 type UserService interface {
