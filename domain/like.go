@@ -11,7 +11,7 @@ type Like struct {
 	TweetID int `json:"tweet_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	gorm.DeletedAt `json:"deleted_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at"`
 }
 
 type LikeService interface {

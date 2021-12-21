@@ -8,14 +8,25 @@
   - [ ] delete 
     - allow only if user created it!
     - cascade properly?
-  - [ ] list
+  - [ ] list user tweets
+  - [ ] feed of tweets by followed users
 - [x] follow / unfollow
   - [ ] declare proper self-ref. m2m with gorm?
 - [x] reply
 - [x] retweet
-- [ ] like 
-  - [ ] validate
-  - [ ] delete
+- [x] like 
+  - [x] create
+  - [x] validate create
+  - [x] delete
 - [ ] image uploads
 - [ ] oauth
 - [ ] messages
+- [ ] seeder
+----
+- [ ] clean up
+- [ ] comment
+- [ ] test 
+- [ ] deploy
+- [ ] push
+- [ ] test build
+- [ ] readme

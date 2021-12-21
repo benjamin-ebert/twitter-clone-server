@@ -57,7 +57,7 @@ func (fv *followValidator) followDoesNotExist(follow *domain.Follow) error {
 	query := fv.db.Where(follow)
 	err := query.First(&existing).Error
 	if err == nil {
-		return errs.FollowAlreadyExists
+		return errs.AlreadyExists
 	}
 	if err != gorm.ErrRecordNotFound {
 		return err

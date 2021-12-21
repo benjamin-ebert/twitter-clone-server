@@ -33,7 +33,7 @@ const (
 	RepliedToTweetDoesNotExist modelError = "models: the replied to tweet does not exist"
 	RetweetedTweetDoesNotExist modelError = "models: the retweeted tweet does not exist"
 
-	FollowAlreadyExists modelError = "models: this follow already exists"
+	AlreadyExists modelError = "models: the record already exists"
 	FollowedDoesNotExist modelError = "models: user to be followed does not exist"
 	FollowedIsFollower modelError = "models: followed and follower are the same user"
 
