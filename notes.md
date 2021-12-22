@@ -1,13 +1,21 @@
 # Twitter Clone
 
+latest:
+- preload user profile relations
+- add belongsto tweet relation to like domain
+- hard delete likes
+- check if tweet exists before deleting it
+  (so it only deletes if the user has created it)
+
+todo:
+
+
 - [x] auth system
   - [ ] proper user json fields
 - [ ] tweets
   - [x] create
   - [ ] update?
-  - [ ] delete 
-    - allow only if user created it!
-    - cascade properly?
+  - [x] delete 
   - [ ] list user tweets
   - [ ] feed of tweets by followed users
 - [x] follow / unfollow

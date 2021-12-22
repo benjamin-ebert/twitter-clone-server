@@ -288,7 +288,12 @@ func (ug *userGorm) FindUserByRemember(rememberHash string) (*domain.User, error
 }
 
 func first(db *gorm.DB, dst interface{}) error {
-	err := db.First(dst).Error
+	err := db.
+		Preload("Tweets.Replies").
+		Preload("Tweets.Retweets").
+		Preload("Tweets.Likes").
+		Preload("Likes.Tweet").
+		First(dst).Error
 	if err == gorm.ErrRecordNotFound {
 		return errs.NotFound
 	}

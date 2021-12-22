@@ -44,7 +44,9 @@ func (tv *tweetValidator) CreateTweet(tweet *domain.Tweet) error {
 }
 
 func (tv *tweetValidator) DeleteTweet(tweet *domain.Tweet) error {
-	err := runTweetValFns(tweet, tv.idValid)
+	err := runTweetValFns(tweet,
+		tv.idValid,
+		tv.exists)
 	if err != nil {
 		return err
 	}
@@ -71,6 +73,14 @@ func (tv *tweetValidator) contentMinLength(tweet *domain.Tweet) error {
 func (tv *tweetValidator) contentMaxLength(tweet *domain.Tweet) error {
 	if utf8.RuneCountInString(tweet.Content) > 280 {
 		return errs.ContentTooLong
+	}
+	return nil
+}
+
+func (tv *tweetValidator) exists(tweet *domain.Tweet) error {
+	err := tv.db.First(tweet, "id = ? AND user_id = ?", tweet.ID, tweet.UserID).Error
+	if err != nil {
+		return errs.NotFound
 	}
 	return nil
 }
@@ -132,8 +142,6 @@ func (tg *tweetGorm) DeleteTweet(tweet *domain.Tweet) error {
 		return err
 	}
 	// Delete the tweet
-	//err = tg.db.Delete(tweet).Error
-	//err = tg.db.Where("id = ? AND user_id = ?", tweet.ID, tweet.UserID).Delete(tweet).Error
 	err = tg.db.Delete(tweet, "id = ? AND user_id = ?", tweet.ID, tweet.UserID).Error
 	if err != nil {
 		return err
