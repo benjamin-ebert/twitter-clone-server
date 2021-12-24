@@ -14,9 +14,16 @@ type Server struct {
 	ts domain.TweetService
 	fs domain.FollowService
 	ls domain.LikeService
+	is domain.ImageService
 }
 
-func NewServer(us *database.UserService, ts *database.TweetService, fs *database.FollowService, ls *database.LikeService) *Server {
+func NewServer(
+	us *database.UserService,
+	ts *database.TweetService,
+	fs *database.FollowService,
+	ls *database.LikeService,
+	is *database.ImageService,
+	) *Server {
 
 	s := &Server{
 		router: mux.NewRouter(),
@@ -24,6 +31,7 @@ func NewServer(us *database.UserService, ts *database.TweetService, fs *database
 		ts: ts,
 		fs: fs,
 		ls: ls,
+		is: is,
 	}
 
 	s.registerAuthRoutes(s.router)
@@ -32,6 +40,7 @@ func NewServer(us *database.UserService, ts *database.TweetService, fs *database
 	s.registerTweetRoutes(s.router)
 	s.registerLikeRoutes(s.router)
 	s.registerFollowRoutes(s.router)
+	s.registerImageRoutes(s.router)
 
 	s.router.Use(setContentTypeJSON, s.authUser)
 	return s

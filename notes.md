@@ -12,11 +12,16 @@ todo:
 
 - [x] auth system
   - [ ] proper user json fields
+- [ ] user 
+  - [ ] profile data update
+  - [ ] avatar and header update
 - [ ] tweets
   - [x] create
-  - [ ] update?
+  - [ ] update
+    - [ ] images add
+    - [ ] images delete
   - [x] delete 
-  - [ ] list user tweets
+  - [x] list user tweets
   - [ ] feed of tweets by followed users
 - [x] follow / unfollow
   - [ ] declare proper self-ref. m2m with gorm?
@@ -27,9 +32,13 @@ todo:
   - [x] validate create
   - [x] delete
 - [ ] image uploads
+  - [x] basic functionality
+  - [ ] user avatar
+  - [ ] user header
+  - [ ] tweet images
 - [ ] oauth
-- [ ] messages
-- [ ] seeder
+- [ ] messages ?
+- [ ] seeder ?
 ----
 - [ ] clean up
 - [ ] comment

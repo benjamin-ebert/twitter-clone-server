@@ -18,6 +18,7 @@ type Tweet struct {
 	Replies []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`
 	Retweets []Tweet `json:"retweets" gorm:"foreignKey:RetweetsID"`
 	Likes []Like `json:"likes" gorm:"foreignKey:TweetID"`
+	Images []Image `json:"images" gorm:"polymorphic:Owner"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
