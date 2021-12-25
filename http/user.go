@@ -29,7 +29,7 @@ func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for i, t := range user.Tweets {
-		images, err := s.is.ByTweetID(t.ID)
+		images, err := s.is.ByOwner("tweet", t.ID)
 		if err != nil {
 			fmt.Println("err retrieving user tweet images: ", err)
 		}
@@ -75,6 +75,12 @@ func (s *Server) handleUploadUserImages(w http.ResponseWriter, r *http.Request) 
 
 			// delete the previous header / avatar after successful update
 			// might as well just delete everything in the users dir except the two stored in the db
+			userImgs, err := s.is.ByOwner("user", user.ID)
+			for _, img := range userImgs {
+				if img.Filename != user.Avatar && img.Filename != user.Header {
+					s.is.Delete(&img)
+				}
+			}
 		}
 	}
 	return

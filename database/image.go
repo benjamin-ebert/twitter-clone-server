@@ -34,8 +34,8 @@ func (is *ImageService) Create(ownerType string, ownerID int, r io.Reader, filen
 	return nil
 }
 
-func (is *ImageService) ByTweetID(tweetID int) ([]domain.Image, error) {
-	path := is.imagePath("Tweet", tweetID)
+func (is *ImageService) ByOwner(ownerType string, ownerID int) ([]domain.Image, error) {
+	path := is.imagePath(ownerType, ownerID)
 	imgStrings, err := filepath.Glob(path + "*")
 	if err != nil {
 		return nil, err
@@ -44,16 +44,16 @@ func (is *ImageService) ByTweetID(tweetID int) ([]domain.Image, error) {
 	for i := range ret {
 		imgStrings[i] = strings.Replace(imgStrings[i], path, "", 1)
 		ret[i] = domain.Image{
+			OwnerType: ownerType,
+			OwnerID: ownerID,
 			Filename: imgStrings[i],
-			OwnerID: tweetID,
-			OwnerType: "Tweet",
 		}
 	}
 	return ret, nil
 }
 
 func (is *ImageService) Delete(i *domain.Image) error {
-	panic("Implement me!")
+	return os.Remove(i.RelativePath())
 }
 
 func (is *ImageService) mkImagePath(ownerType string, ownerID int) (string, error) {
