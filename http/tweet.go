@@ -15,6 +15,7 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 	r.HandleFunc("/reply/{replies_to_id:[0-9]+}", s.requireAuth(s.handleCreateTweet)).Methods("POST")
 	r.HandleFunc("/retweet/{retweets_id:[0-9]+}", s.requireAuth(s.handleCreateTweet)).Methods("POST")
 	r.HandleFunc("/tweet/delete/{id:[0-9]+}", s.requireAuth(s.handleDeleteTweet)).Methods("DELETE")
+	r.HandleFunc("/tweet/images/upload/{id:[0-9]+}", s.requireAuth(s.handleUploadTweetImages)).Methods("POST")
 }
 
 func (s *Server) handleCreateTweet(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +37,7 @@ func (s *Server) handleCreateTweet(w http.ResponseWriter, r *http.Request) {
 	if found {
 		 repliesToId, err := strconv.Atoi(repliesToIdString)
 		 if err != nil {
-			 fmt.Println("err converting string route param replies_to to golang int: ", err)
+			 fmt.Println("err converting string route param replies_to_id to golang int: ", err)
 		 }
 		 tweet.RepliesToID = repliesToId
 	}
@@ -45,7 +46,7 @@ func (s *Server) handleCreateTweet(w http.ResponseWriter, r *http.Request) {
 	if found {
 		retweetsId, err := strconv.Atoi(retweetsIdString)
 		if err != nil {
-			fmt.Println("err converting string route param replies_to to golang int: ", err)
+			fmt.Println("err converting string route param retweets_id to golang int: ", err)
 		}
 		tweet.RetweetsID = retweetsId
 	}
@@ -68,7 +69,7 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 	if found {
 		deleteId, err := strconv.Atoi(deleteIdString)
 		if err != nil {
-			fmt.Println("err converting string route param replies_to to golang int: ", err)
+			fmt.Println("err converting string route param id to golang int: ", err)
 		}
 		tweet.ID = deleteId
 	}
@@ -85,4 +86,36 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("err returning deleted tweet as json: ", err)
 	}
+}
+
+func (s *Server) handleUploadTweetImages(w http.ResponseWriter, r *http.Request) {
+	var tweet domain.Tweet
+
+	idString, found := mux.Vars(r)["id"]
+	if found {
+		id, err := strconv.Atoi(idString)
+		if err != nil {
+			fmt.Println("err converting string route param id to golang int: ", err)
+		}
+		tweet.ID = id
+	}
+
+	err := r.ParseMultipartForm(1 << 20)
+	if err != nil {
+		fmt.Println("err parsing multipart form: ", err)
+	}
+
+	files := r.MultipartForm.File["images"]
+	for _, f := range files {
+		file, err := f.Open()
+		if err != nil {
+			fmt.Println("err opening file: ", err)
+		}
+		defer file.Close()
+		err = s.is.Create("tweet", tweet.ID, file, f.Filename)
+		if err != nil {
+			fmt.Println("err storing image: ", err)
+		}
+	}
+	return
 }

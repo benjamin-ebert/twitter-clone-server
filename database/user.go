@@ -46,8 +46,9 @@ type userGorm struct {
 	db *gorm.DB
 }
 
-func (u *UserService) FindUserByID(ctx context.Context, id int) (*domain.User, error) {
-	panic("implement me")
+func (u *UserService) ByID(id int) (*domain.User, error) {
+	fmt.Println("INSIDE UserService@ByID: ", id)
+	return u.userValidator.ByID(id)
 }
 
 func (u *UserService) FindUsers(ctx context.Context, filter domain.UserFilter) ([]*domain.User, int, error) {
@@ -273,6 +274,17 @@ func (ug *userGorm) UpdateUser(ctx context.Context, user *domain.User) error {
 	return ug.db.Save(user).Error
 }
 
+func (ug *userGorm) ByID(id int) (*domain.User, error) {
+	var user domain.User
+	err := ug.db.
+		Preload("Tweets.Replies").
+		Preload("Tweets.Retweets").
+		Preload("Tweets.Likes").
+		Preload("Likes.Tweet").
+		First(&user, "id = ?", id).Error
+	return &user, err
+}
+
 func (ug *userGorm) FindUserByEmail(email string) (*domain.User, error) {
 	var user domain.User
 	db := ug.db.Where("email = ?", email)
@@ -288,12 +300,7 @@ func (ug *userGorm) FindUserByRemember(rememberHash string) (*domain.User, error
 }
 
 func first(db *gorm.DB, dst interface{}) error {
-	err := db.
-		Preload("Tweets.Replies").
-		Preload("Tweets.Retweets").
-		Preload("Tweets.Likes").
-		Preload("Likes.Tweet").
-		First(dst).Error
+	err := db.First(dst).Error
 	if err == gorm.ErrRecordNotFound {
 		return errs.NotFound
 	}

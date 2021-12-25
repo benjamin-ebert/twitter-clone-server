@@ -35,6 +35,7 @@ func NewServer(
 	}
 
 	s.registerAuthRoutes(s.router)
+	s.registerUserRoutes(s.router)
 	//tweetRouter := s.router.PathPrefix("/tweet").Subrouter()
 	//s.registerTweetRoutes(tweetRouter)
 	s.registerTweetRoutes(s.router)

@@ -18,8 +18,6 @@ func (s *Server) registerAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/register", s.handleRegister).Methods("POST")
 	r.HandleFunc("/login", s.handleLogin).Methods("POST")
 	r.HandleFunc("/logout", s.handleLogout).Methods("POST")
-	//r.HandleFunc("/profile", s.requireUserMw.ApplyFn(s.handleProfile)).Methods("GET")
-	r.HandleFunc("/profile", s.requireAuth(s.handleProfile)).Methods("GET")
 	r.HandleFunc("/home", s.handleHome).Methods("GET")
 }
 
@@ -106,16 +104,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
-	fruits := make(map[string]int)
-	fruits["Apples"] = 25
-	fruits["Oranges"] = 10
-
-	user := s.getUserFromContext(r.Context())
-
-	json.NewEncoder(w).Encode(&user)
-}
-
+// handleHome will later redirect to a register / login / landing page
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	response := make(map[string]string)
 	response["message"] = "welcome home"

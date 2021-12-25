@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"wtfTwitter/domain"
 )
 
@@ -29,6 +31,24 @@ func (is *ImageService) Create(ownerType string, ownerID int, r io.Reader, filen
 		return err
 	}
 	return nil
+}
+
+func (is *ImageService) ByTweetID(tweetID int) ([]domain.Image, error) {
+	path := is.imagePath("Tweet", tweetID)
+	imgStrings, err := filepath.Glob(path + "*")
+	if err != nil {
+		return nil, err
+	}
+	ret := make([]domain.Image, len(imgStrings))
+	for i := range ret {
+		imgStrings[i] = strings.Replace(imgStrings[i], path, "", 1)
+		ret[i] = domain.Image{
+			Filename: imgStrings[i],
+			OwnerID: tweetID,
+			OwnerType: "Tweet",
+		}
+	}
+	return ret, nil
 }
 
 func (is *ImageService) mkImagePath(ownerType string, ownerID int) (string, error) {

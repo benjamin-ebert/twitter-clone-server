@@ -27,7 +27,7 @@ func (s *Server) handleUploadImage(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("err opening file: ", err)
 		}
 		defer file.Close()
-		err = s.is.Create("Tweet", 1, file, f.Filename)
+		err = s.is.Create("tweet", 1, file, f.Filename)
 		if err != nil {
 			fmt.Println("err storing image: ", err)
 		}
