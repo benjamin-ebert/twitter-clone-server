@@ -15,6 +15,7 @@ type Image struct {
 type ImageService interface {
 	Create(ownerType string, ownerID int, r io.Reader, filename string) error
 	ByTweetID(tweetID int) ([]Image, error)
+	Delete(i *Image) error
 }
 
 func (i *Image) Path() string {

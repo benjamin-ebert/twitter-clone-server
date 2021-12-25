@@ -17,6 +17,7 @@ func NewImageService() *ImageService {
 
 type ImageService struct{}
 
+// Create needs validation? size, extension, unique name, content type
 func (is *ImageService) Create(ownerType string, ownerID int, r io.Reader, filename string) error {
 	path, err := is.mkImagePath(ownerType, ownerID)
 	if err != nil {
@@ -49,6 +50,10 @@ func (is *ImageService) ByTweetID(tweetID int) ([]domain.Image, error) {
 		}
 	}
 	return ret, nil
+}
+
+func (is *ImageService) Delete(i *domain.Image) error {
+	panic("Implement me!")
 }
 
 func (is *ImageService) mkImagePath(ownerType string, ownerID int) (string, error) {

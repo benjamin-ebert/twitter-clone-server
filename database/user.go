@@ -109,7 +109,9 @@ func (uv *userValidator) UpdateUser(ctx context.Context, user *domain.User) erro
 		uv.emailNormalize,
 		uv.emailRequired,
 		uv.emailFormat,
-		uv.emailIsAvail)
+		uv.emailIsAvail,
+		// validate upload image name?
+		)
 	if err != nil {
 		return err
 	}

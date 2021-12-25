@@ -35,9 +35,10 @@ todo:
   - [x] basic functionality
   - [ ] user avatar
   - [ ] user header
-  - [ ] tweet images
+  - [x] tweet images
+  - [ ] public file server
+  - [ ] hide img urls?
 - [ ] oauth
-- [ ] messages ?
 - [ ] seeder ?
 ----
 - [ ] clean up

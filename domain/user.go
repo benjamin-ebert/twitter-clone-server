@@ -15,8 +15,8 @@ type User struct {
 	RememberHash string `json:"remember_hash"`
 	Tweets []Tweet `json:"tweets" gorm:"foreignKey:UserID"`
 	Likes []Like `json:"likes" gorm:"foreignKey:UserID"`
-	Avatar Image `json:"avatar" gorm:"-"`
-	Header Image `json:"header" gorm:"-"`
+	Avatar string `json:"avatar"`
+	Header string `json:"header"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	//gorm.DeletedAt `json:"deleted_at"`
