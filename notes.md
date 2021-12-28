@@ -14,12 +14,10 @@ todo:
   - [ ] proper user json fields
 - [ ] user 
   - [ ] profile data update
-  - [ ] avatar and header update
+  - [x] avatar and header update
 - [ ] tweets
   - [x] create
-  - [ ] update
-    - [ ] images add
-    - [ ] images delete
+    - [x] images add
   - [x] delete 
   - [x] list user tweets
   - [ ] feed of tweets by followed users
@@ -33,11 +31,14 @@ todo:
   - [x] delete
 - [ ] image uploads
   - [x] basic functionality
-  - [ ] user avatar
-  - [ ] user header
+  - [x] user avatar
+  - [x] user header
   - [x] tweet images
-  - [ ] public file server
-  - [ ] hide img urls?
+  - [x] creation validation
+  - [ ] cascade deletion (tweets)
+  - [ ] report upload progress? https://freshman.tech/file-upload-golang/#report-the-upload-progress
+  - [ ] obfuscate location
+  - [ ] public file server?
 - [ ] oauth
 - [ ] seeder ?
 ----

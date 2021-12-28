@@ -3,6 +3,7 @@ package main
 import (
 	"wtfTwitter/database"
 	"wtfTwitter/http"
+	"wtfTwitter/storage"
 )
 
 func main() {
@@ -16,7 +17,7 @@ func main() {
 	twitterService := database.NewTweetService(db.Gorm)
 	followService := database.NewFollowService(db.Gorm)
 	likeService := database.NewLikeService(db.Gorm)
-	imageService := database.NewImageService()
+	imageService := storage.NewImageService()
 
 	server := http.NewServer(userService, twitterService, followService, likeService, imageService)
 

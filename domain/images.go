@@ -2,18 +2,23 @@ package domain
 
 import (
 	"fmt"
-	"io"
+	"mime/multipart"
 	"net/url"
 )
 
 type Image struct {
 	OwnerType string
 	OwnerID   int
+	File multipart.File
 	Filename string
+	Extension string
+	ContentType string
+	Bytes []byte
+	Size int64
 }
 
 type ImageService interface {
-	Create(ownerType string, ownerID int, r io.Reader, filename string) error
+	Create(image *Image) error
 	ByOwner(ownerType string, ownerID int) ([]Image, error)
 	Delete(i *Image) error
 }

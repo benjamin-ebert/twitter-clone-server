@@ -37,6 +37,12 @@ const (
 	FollowedDoesNotExist modelError = "models: user to be followed does not exist"
 	FollowedIsFollower modelError = "models: followed and follower are the same user"
 
+	FilenameRequired modelError = "image: filename is required"
+	ContentTypeInvalid modelError = "image: invalid content-type, must be image/jpeg or image/png"
+	ExtensionInvalid modelError = "image: invalid extension, must be jpeg or png"
+	ContentTypeExtensionMismatch modelError = "image: content-type and file extension don't match"
+	MaxUploadSizeExceeded modelError = "image: file exceeds max upload size"
+
 	// IDInvalid is returned when an invalid ID is provided
 	// to a method like Delete.
 	IDInvalid privateError = "models: ID provided was invalid"

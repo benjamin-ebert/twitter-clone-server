@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"wtfTwitter/domain"
+	"wtfTwitter/storage"
 )
 
 func (s *Server) registerTweetRoutes(r *mux.Router) {
@@ -100,19 +101,24 @@ func (s *Server) handleUploadTweetImages(w http.ResponseWriter, r *http.Request)
 		tweet.ID = id
 	}
 
-	err := r.ParseMultipartForm(1 << 20)
+	err := r.ParseMultipartForm(storage.MaxUploadSize)
 	if err != nil {
 		fmt.Println("err parsing multipart form: ", err)
 	}
 
 	files := r.MultipartForm.File["images"]
-	for _, f := range files {
-		file, err := f.Open()
+	for _, fileHeader := range files {
+		file, err := fileHeader.Open()
 		if err != nil {
 			fmt.Println("err opening file: ", err)
 		}
 		defer file.Close()
-		err = s.is.Create("tweet", tweet.ID, file, f.Filename)
+		var img domain.Image
+		img.OwnerType = "tweet"
+		img.OwnerID = tweet.ID
+		img.File = file
+		img.Filename = fileHeader.Filename
+		err = s.is.Create(&img)
 		if err != nil {
 			fmt.Println("err storing image: ", err)
 		}

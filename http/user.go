@@ -5,23 +5,20 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
+	"wtfTwitter/domain"
+	"wtfTwitter/storage"
 )
 
 func (s *Server) registerUserRoutes(r *mux.Router) {
 	r.HandleFunc("/profile", s.requireAuth(s.handleProfile)).Methods("GET")
-	r.HandleFunc("/user/{image_type}/upload", s.requireAuth(s.handleUploadUserImages)).Methods("POST")
+	r.HandleFunc("/user/upload/{image_type}", s.requireAuth(s.handleUploadUserImages)).Methods("POST")
 }
 
-// handleProfile really shouldn't be here, but in its own http/user.go file for showing and updating users
 func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 	fruits := make(map[string]int)
 	fruits["Apples"] = 25
 	fruits["Oranges"] = 10
 
-	// getUserFromContext uses ByRemember under the Hood
-	// append images within ByRemember? but then it would get the images on every damn request
-	// so maybe better get ByID, which is only called within handleProfile?
-	// and then within us.ByID append the users images?
 	u := s.getUserFromContext(r.Context())
 	user, err := s.us.ByID(u.ID)
 	if err != nil {
@@ -45,7 +42,7 @@ func (s *Server) handleUploadUserImages(w http.ResponseWriter, r *http.Request) 
 		if imgType == "avatar" || imgType == "header" {
 			user := s.getUserFromContext(r.Context())
 
-			err := r.ParseMultipartForm(1 << 20)
+			err := r.ParseMultipartForm(storage.MaxUploadSize)
 			if err != nil {
 				 fmt.Println("err parsing multipart form: ", err)
 			}
@@ -57,15 +54,20 @@ func (s *Server) handleUploadUserImages(w http.ResponseWriter, r *http.Request) 
 			}
 			defer image.Close()
 
-			err = s.is.Create("user", user.ID, image, files[0].Filename)
+			var img domain.Image
+			img.OwnerType = "user"
+			img.OwnerID = user.ID
+			img.File = image
+			img.Filename = files[0].Filename
+			err = s.is.Create(&img)
 			if err != nil {
 				 fmt.Println("err storing image: ", err)
 			}
 
 			if imgType == "avatar" {
-				user.Avatar = files[0].Filename
+				user.Avatar = img.Filename
 			} else {
-				user.Header = files[0].Filename
+				user.Header = img.Filename
 			}
 
 			err = s.us.UpdateUser(r.Context(), user)
@@ -73,8 +75,6 @@ func (s *Server) handleUploadUserImages(w http.ResponseWriter, r *http.Request) 
 				fmt.Println("err updating user image: ", err)
 			}
 
-			// delete the previous header / avatar after successful update
-			// might as well just delete everything in the users dir except the two stored in the db
 			userImgs, err := s.is.ByOwner("user", user.ID)
 			for _, img := range userImgs {
 				if img.Filename != user.Avatar && img.Filename != user.Header {

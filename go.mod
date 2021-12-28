@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/gorilla/mux v1.8.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
 	gorm.io/driver/postgres v1.2.3
 	gorm.io/gorm v1.22.4
 )

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"wtfTwitter/database"
 	"wtfTwitter/domain"
+	"wtfTwitter/storage"
 )
 
 type Server struct {
@@ -22,7 +23,7 @@ func NewServer(
 	ts *database.TweetService,
 	fs *database.FollowService,
 	ls *database.LikeService,
-	is *database.ImageService,
+	is *storage.ImageService,
 	) *Server {
 
 	s := &Server{
