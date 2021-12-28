@@ -11,7 +11,8 @@ import (
 
 func (s *Server) registerUserRoutes(r *mux.Router) {
 	r.HandleFunc("/profile", s.requireAuth(s.handleProfile)).Methods("GET")
-	r.HandleFunc("/user/upload/{image_type}", s.requireAuth(s.handleUploadUserImages)).Methods("POST")
+	r.HandleFunc("/user/{image_type}/upload", s.requireAuth(s.handleUploadUserImages)).Methods("POST")
+	r.HandleFunc("/user/{image_type}/delete", s.requireAuth(s.handleDeleteUserImages)).Methods("DELETE")
 }
 
 func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
@@ -80,6 +81,44 @@ func (s *Server) handleUploadUserImages(w http.ResponseWriter, r *http.Request) 
 				if img.Filename != user.Avatar && img.Filename != user.Header {
 					s.is.Delete(&img)
 				}
+			}
+		}
+	}
+	return
+}
+
+func (s *Server) handleDeleteUserImages(w http.ResponseWriter, r *http.Request) {
+	imgType, found := mux.Vars(r)["image_type"]
+	if found {
+		if imgType == "avatar" || imgType == "header" {
+			user := s.getUserFromContext(r.Context())
+
+			var filename string
+			if imgType == "avatar" {
+				filename = user.Avatar
+			} else {
+				filename = user.Header
+			}
+
+			var img domain.Image
+			img.OwnerType = "user"
+			img.OwnerID = user.ID
+			img.Filename = filename
+
+			err := s.is.Delete(&img)
+			if err != nil {
+				fmt.Println("err deleting image: ", err)
+			}
+
+			if imgType == "avatar" {
+				user.Avatar = ""
+			} else {
+				user.Header = ""
+			}
+
+			err = s.us.UpdateUser(r.Context(), user)
+			if err != nil {
+				fmt.Println("err updating user image: ", err)
 			}
 		}
 	}

@@ -35,7 +35,12 @@ todo:
   - [x] user header
   - [x] tweet images
   - [x] creation validation
+    - only creator can
+    - tweet exists
+    - max img count
+  - [x] avatar / header deletion 
   - [ ] cascade deletion (tweets)
+  - [ ] delete validation? only creator can
   - [ ] report upload progress? https://freshman.tech/file-upload-golang/#report-the-upload-progress
   - [ ] obfuscate location
   - [ ] public file server?
