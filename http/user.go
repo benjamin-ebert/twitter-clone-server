@@ -89,6 +89,7 @@ func (s *Server) handleUploadUserImages(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) handleDeleteUserImages(w http.ResponseWriter, r *http.Request) {
 	imgType, found := mux.Vars(r)["image_type"]
+	// This doesn't look right. Make it cleaner.
 	if found {
 		if imgType == "avatar" || imgType == "header" {
 			user := s.getUserFromContext(r.Context())

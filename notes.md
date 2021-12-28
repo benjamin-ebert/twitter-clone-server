@@ -9,7 +9,6 @@ latest:
 
 todo:
 
-
 - [x] auth system
   - [ ] proper user json fields
 - [ ] user 
@@ -19,6 +18,7 @@ todo:
   - [x] create
     - [x] images add
   - [x] delete 
+  - [ ] validate deletion! only owner can
   - [x] list user tweets
   - [ ] feed of tweets by followed users
 - [x] follow / unfollow
@@ -34,16 +34,17 @@ todo:
   - [x] user avatar
   - [x] user header
   - [x] tweet images
-  - [x] creation validation
-    - only creator can
-    - tweet exists
-    - max img count
+  - [x] creation validation 
+    - [ ] only creator can
+    - [ ] tweet exists
+    - [x] max img count
   - [x] avatar / header deletion 
-  - [ ] cascade deletion (tweets)
+  - [x] cascade deletion (tweets)
   - [ ] delete validation? only creator can
   - [ ] report upload progress? https://freshman.tech/file-upload-golang/#report-the-upload-progress
   - [ ] obfuscate location
   - [ ] public file server?
+- [ ] ERROR HANDLING
 - [ ] oauth
 - [ ] seeder ?
 ----

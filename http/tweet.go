@@ -83,6 +83,18 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("err deleting tweet: ", err)
 	}
 
+	// THIS RUNS EVEN IF IT FAILED TO DELETE THE TWEET BECAUSE THE USER IS NOT THE OWNER. FIX!
+	images, err := s.is.ByOwner("tweet", tweet.ID)
+	if err != nil {
+		fmt.Println("err retrieving tweet images")
+	}
+	for _, img := range images {
+		err := s.is.Delete(&img)
+		if err != nil {
+			fmt.Println("err deleting tweet image")
+		}
+	}
+
 	err = json.NewEncoder(w).Encode(&tweet)
 	if err != nil {
 		fmt.Println("err returning deleted tweet as json: ", err)
@@ -90,38 +102,51 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUploadTweetImages(w http.ResponseWriter, r *http.Request) {
-	var tweet domain.Tweet
-
 	idString, found := mux.Vars(r)["id"]
+	var tweetId int
 	if found {
 		id, err := strconv.Atoi(idString)
 		if err != nil {
 			fmt.Println("err converting string route param id to golang int: ", err)
 		}
-		tweet.ID = id
+		tweetId = id
+	}
+	// This is somewhat brittle. Make it more elegant and add proper error handling.
+	tweet, err := s.ts.ByID(tweetId)
+	if err != nil {
+		fmt.Println(err)
+		user := s.getUserFromContext(r.Context())
+		if tweet.UserID != user.ID {
+			fmt.Println("unauthorized")
+		}
 	}
 
-	err := r.ParseMultipartForm(storage.MaxUploadSize)
+	err = r.ParseMultipartForm(storage.MaxUploadSize)
 	if err != nil {
 		fmt.Println("err parsing multipart form: ", err)
 	}
 
 	files := r.MultipartForm.File["images"]
-	for _, fileHeader := range files {
-		file, err := fileHeader.Open()
-		if err != nil {
-			fmt.Println("err opening file: ", err)
+	if len(files) <= 4 {
+		for _, fileHeader := range files {
+			file, err := fileHeader.Open()
+			if err != nil {
+				fmt.Println("err opening file: ", err)
+			}
+			defer file.Close()
+			var img domain.Image
+			img.OwnerType = "tweet"
+			img.OwnerID = tweetId
+			img.File = file
+			img.Filename = fileHeader.Filename
+			err = s.is.Create(&img)
+			if err != nil {
+				fmt.Println("err storing image: ", err)
+			}
 		}
-		defer file.Close()
-		var img domain.Image
-		img.OwnerType = "tweet"
-		img.OwnerID = tweet.ID
-		img.File = file
-		img.Filename = fileHeader.Filename
-		err = s.is.Create(&img)
-		if err != nil {
-			fmt.Println("err storing image: ", err)
-		}
+	} else {
+		fmt.Println("too many images, max 4 per tweet")
 	}
+
 	return
 }

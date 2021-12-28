@@ -114,6 +114,15 @@ func (tv *tweetValidator) retweetedTweetExists(tweet *domain.Tweet) error {
 	return nil
 }
 
+func (tg *tweetGorm) ByID(id int) (*domain.Tweet, error) {
+	var tweet domain.Tweet
+	err := tg.db.First(&tweet, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &tweet, nil
+}
+
 func (tg *tweetGorm) CreateTweet(tweet *domain.Tweet) error {
 	err := tg.db.Create(tweet).Error
 	if err != nil {

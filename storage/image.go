@@ -18,7 +18,7 @@ import (
 	"wtfTwitter/domain"
 )
 
-const MaxUploadSize int64 = 1 << 20
+const MaxUploadSize int64 = 5 << 20 // 5 Megabyte
 
 var _ domain.ImageService = &ImageService{}
 
