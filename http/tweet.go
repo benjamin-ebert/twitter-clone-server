@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"wtfTwitter/domain"
+	"wtfTwitter/errs"
 	"wtfTwitter/storage"
 )
 
@@ -84,7 +85,7 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// THIS RUNS EVEN IF IT FAILED TO DELETE THE TWEET BECAUSE THE USER IS NOT THE OWNER. FIX!
-	images, err := s.is.ByOwner("tweet", tweet.ID)
+	images, err := s.is.ByOwner(domain.OwnerTypeTweet, tweet.ID)
 	if err != nil {
 		fmt.Println("err retrieving tweet images")
 	}
@@ -102,51 +103,72 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUploadTweetImages(w http.ResponseWriter, r *http.Request) {
-	idString, found := mux.Vars(r)["id"]
-	var tweetId int
-	if found {
-		id, err := strconv.Atoi(idString)
-		if err != nil {
-			fmt.Println("err converting string route param id to golang int: ", err)
-		}
-		tweetId = id
-	}
-	// This is somewhat brittle. Make it more elegant and add proper error handling.
-	tweet, err := s.ts.ByID(tweetId)
+	// Parse tweet ID from the path.
+	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		fmt.Println(err)
-		user := s.getUserFromContext(r.Context())
-		if tweet.UserID != user.ID {
-			fmt.Println("unauthorized")
-		}
+		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
+		return
 	}
 
+	// Fetch tweet from the database.
+	tweet, err := s.ts.ByID(id)
+	if err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+
+	// Check if the tweet belongs to the authed user.
+	user := s.getUserFromContext(r.Context())
+	if tweet.UserID != user.ID {
+		errs.ReturnError(w, r, errs.Errorf(errs.EUNAUTHORIZED, "You are not allowed to edit this tweet."))
+		return
+	}
+
+	// Parse the data to be uploaded.
 	err = r.ParseMultipartForm(storage.MaxUploadSize)
 	if err != nil {
-		fmt.Println("err parsing multipart form: ", err)
+		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, errs.ErrorMessage(err)))
+		return
 	}
 
+	// Check if the image count is max 4.
 	files := r.MultipartForm.File["images"]
-	if len(files) <= 4 {
-		for _, fileHeader := range files {
-			file, err := fileHeader.Open()
-			if err != nil {
-				fmt.Println("err opening file: ", err)
-			}
-			defer file.Close()
-			var img domain.Image
-			img.OwnerType = "tweet"
-			img.OwnerID = tweetId
-			img.File = file
-			img.Filename = fileHeader.Filename
-			err = s.is.Create(&img)
-			if err != nil {
-				fmt.Println("err storing image: ", err)
-			}
-		}
-	} else {
-		fmt.Println("too many images, max 4 per tweet")
+	if len(files) > 4 {
+		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Too many images, not more than 4 allowed."))
+		return
 	}
 
-	return
+	// Process the images.
+	for _, fileHeader := range files {
+		// Open the image.
+		 file, err := fileHeader.Open()
+		 if err != nil {
+			 errs.ReturnError(w, r, err)
+			 return
+		 }
+		 defer file.Close()
+		 // Parse it to an Image object
+		 img := &domain.Image{
+			 OwnerType: domain.OwnerTypeTweet,
+			 OwnerID: id,
+			 File: file,
+			 Filename: fileHeader.Filename,
+		 }
+		 // Validate it, then save it to disk.
+		 err = s.is.Create(img)
+		 if err != nil {
+			 errs.ReturnError(w, r, err)
+			 return
+		 }
+		// TODO: Appending isn't enough, as the result will only be new images. Pull the tweet from the db.
+		// Append it to the tweet.
+		 tweet.Images = append(tweet.Images, *img)
+	}
+
+	// Return the tweet with its images.
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(tweet); err != nil {
+		errs.LogError(r, err)
+		return
+	}
 }

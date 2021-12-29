@@ -27,10 +27,11 @@ func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for i, t := range user.Tweets {
-		images, err := s.is.ByOwner("tweet", t.ID)
+		images, err := s.is.ByOwner(domain.OwnerTypeTweet, t.ID)
 		if err != nil {
 			fmt.Println("err retrieving user tweet images: ", err)
 		}
+		// TODO: should be simple filepath strings, not Image objects
 		user.Tweets[i].Images = images
 	}
 
@@ -56,7 +57,7 @@ func (s *Server) handleUploadUserImages(w http.ResponseWriter, r *http.Request) 
 			defer image.Close()
 
 			var img domain.Image
-			img.OwnerType = "user"
+			img.OwnerType = domain.OwnerTypeUser
 			img.OwnerID = user.ID
 			img.File = image
 			img.Filename = files[0].Filename
@@ -76,7 +77,7 @@ func (s *Server) handleUploadUserImages(w http.ResponseWriter, r *http.Request) 
 				fmt.Println("err updating user image: ", err)
 			}
 
-			userImgs, err := s.is.ByOwner("user", user.ID)
+			userImgs, err := s.is.ByOwner(domain.OwnerTypeUser, user.ID)
 			for _, img := range userImgs {
 				if img.Filename != user.Avatar && img.Filename != user.Header {
 					s.is.Delete(&img)
@@ -102,7 +103,7 @@ func (s *Server) handleDeleteUserImages(w http.ResponseWriter, r *http.Request) 
 			}
 
 			var img domain.Image
-			img.OwnerType = "user"
+			img.OwnerType = domain.OwnerTypeUser
 			img.OwnerID = user.ID
 			img.Filename = filename
 

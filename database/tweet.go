@@ -118,7 +118,12 @@ func (tg *tweetGorm) ByID(id int) (*domain.Tweet, error) {
 	var tweet domain.Tweet
 	err := tg.db.First(&tweet, "id = ?", id).Error
 	if err != nil {
-		return nil, err
+		//return nil, err
+		if err == gorm.ErrRecordNotFound {
+			return nil, errs.Errorf(errs.ENOTFOUND, "The record does not exist.")
+		} else {
+			return nil, errs.Errorf(errs.EINTERNAL, "Something went wrong")
+		}
 	}
 	return &tweet, nil
 }

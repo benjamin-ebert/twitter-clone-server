@@ -6,6 +6,11 @@ import (
 	"net/url"
 )
 
+const (
+	OwnerTypeTweet = "tweet"
+	OwnerTypeUser = "user"
+)
+
 type Image struct {
 	OwnerType string
 	OwnerID   int
