@@ -17,6 +17,7 @@ todo:
 - [ ] tweets
   - [x] create
     - [x] images add
+  - [ ] show
   - [x] delete 
   - [ ] validate deletion! only owner can
   - [x] list user tweets

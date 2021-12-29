@@ -26,12 +26,11 @@ func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("err retrieving user: ", err)
 	}
 
-	for i, t := range user.Tweets {
-		images, err := s.is.ByOwner(domain.OwnerTypeTweet, t.ID)
+	for i, tweet := range user.Tweets {
+		images, err := s.is.ByOwner(domain.OwnerTypeTweet, tweet.ID)
 		if err != nil {
 			fmt.Println("err retrieving user tweet images: ", err)
 		}
-		// TODO: should be simple filepath strings, not Image objects
 		user.Tweets[i].Images = images
 	}
 

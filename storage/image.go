@@ -166,14 +166,11 @@ func (ic *imageCrud) ByOwner(ownerType string, ownerID int) ([]domain.Image, err
 	if err != nil {
 		return nil, err
 	}
-	// TODO: should be simple filepath strings, not Image objects
 	ret := make([]domain.Image, len(imgStrings))
 	for i := range ret {
 		imgStrings[i] = strings.Replace(imgStrings[i], path, "", 1)
 		ret[i] = domain.Image{
-			OwnerType: ownerType,
-			OwnerID: ownerID,
-			Filename: imgStrings[i],
+			URL: path + imgStrings[i],
 		}
 	}
 	return ret, nil

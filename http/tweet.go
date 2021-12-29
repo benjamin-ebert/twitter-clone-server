@@ -103,7 +103,7 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUploadTweetImages(w http.ResponseWriter, r *http.Request) {
-	// Parse tweet ID from the path.
+	// Parse tweet ID from the url.
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
@@ -154,16 +154,21 @@ func (s *Server) handleUploadTweetImages(w http.ResponseWriter, r *http.Request)
 			 File: file,
 			 Filename: fileHeader.Filename,
 		 }
-		 // Validate it, then save it to disk.
+		 // Save the image to disk (includes validation / normalization)
 		 err = s.is.Create(img)
 		 if err != nil {
 			 errs.ReturnError(w, r, err)
 			 return
 		 }
-		// TODO: Appending isn't enough, as the result will only be new images. Pull the tweet from the db.
-		// Append it to the tweet.
-		 tweet.Images = append(tweet.Images, *img)
 	}
+
+	// Fetch all the tweet's images
+	images, err := s.is.ByOwner(domain.OwnerTypeTweet, id)
+	if err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+	tweet.Images = images
 
 	// Return the tweet with its images.
 	w.WriteHeader(http.StatusCreated)

@@ -18,7 +18,6 @@ type Tweet struct {
 	Replies []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`
 	Retweets []Tweet `json:"retweets" gorm:"foreignKey:RetweetsID"`
 	Likes []Like `json:"likes" gorm:"foreignKey:TweetID"`
-	// TODO: should be simple filepath strings, not Image objects
 	Images []Image `json:"images" gorm:"-"`
 
 	CreatedAt time.Time `json:"created_at"`

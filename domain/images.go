@@ -12,14 +12,15 @@ const (
 )
 
 type Image struct {
-	OwnerType string
-	OwnerID   int
-	File multipart.File
-	Filename string
-	Extension string
-	ContentType string
-	Bytes []byte
-	Size int64
+	URL string `json:"url"`
+	OwnerType string `json:"-"`
+	OwnerID   int `json:"-"`
+	File multipart.File `json:"-"`
+	Filename string `json:"-"`
+	Extension string `json:"-"`
+	ContentType string `json:"-"`
+	Bytes []byte `json:"-"`
+	Size int64 `json:"-"`
 }
 
 type ImageService interface {
