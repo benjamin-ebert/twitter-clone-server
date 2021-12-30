@@ -170,6 +170,9 @@ func (ic *imageCrud) ByOwner(ownerType string, ownerID int) ([]domain.Image, err
 	for i := range ret {
 		imgStrings[i] = strings.Replace(imgStrings[i], path, "", 1)
 		ret[i] = domain.Image{
+			Filename: imgStrings[i],
+			OwnerType: ownerType,
+			OwnerID: ownerID,
 			URL: path + imgStrings[i],
 		}
 	}
@@ -178,6 +181,10 @@ func (ic *imageCrud) ByOwner(ownerType string, ownerID int) ([]domain.Image, err
 
 func (ic *imageCrud) Delete(i *domain.Image) error {
 	return os.Remove(i.RelativePath())
+}
+
+func (ic *imageCrud) DeleteAll(ownerType string, ownerID int) error {
+	return os.RemoveAll(ic.imagePath(ownerType, ownerID))
 }
 
 func (ic *imageCrud) mkImagePath(ownerType string, ownerID int) (string, error) {

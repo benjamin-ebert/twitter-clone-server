@@ -284,7 +284,14 @@ func (ug *userGorm) ByID(id int) (*domain.User, error) {
 		Preload("Tweets.Likes").
 		Preload("Likes.Tweet").
 		First(&user, "id = ?", id).Error
-	return &user, err
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errs.Errorf(errs.ENOTFOUND, "The user does not exist")
+		} else {
+			return nil, err
+		}
+	}
+	return &user, nil
 }
 
 func (ug *userGorm) FindUserByEmail(email string) (*domain.User, error) {

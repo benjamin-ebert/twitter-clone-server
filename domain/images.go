@@ -27,6 +27,7 @@ type ImageService interface {
 	Create(image *Image) error
 	ByOwner(ownerType string, ownerID int) ([]Image, error)
 	Delete(i *Image) error
+	DeleteAll(ownerType string, ownerID int) error
 }
 
 func (i *Image) Path() string {
