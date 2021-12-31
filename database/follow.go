@@ -13,13 +13,15 @@ type FollowService struct {
 }
 
 // followValidator runs validations on incoming Follow data.
-// On success, it passes the data on to followGorm. Otherwise, it returns an error.
+// On success, it passes the data on to followGorm.
+// Otherwise, it returns the error of the validation that has failed.
 type followValidator struct {
 	followGorm
 }
 
 // followGorm runs CRUD operations on the database using incoming Follow data.
-// It assumes that data has been validated. On success, it returns nil. Otherwise, it returns an error.
+// It assumes that data has been validated. On success, it returns nil.
+// Otherwise, it returns the error of the operation that has failed.
 type followGorm struct {
 	db *gorm.DB
 }
@@ -35,7 +37,8 @@ func NewFollowService(db *gorm.DB) *FollowService {
 	}
 }
 
-// This checks if the FollowService struct properly implements the domain.FollowService interface.
+// Ensure the FollowService struct properly implements the domain.FollowService interface.
+// If it does not, then this expression becomes invalid and won't compile.
 var _ domain.FollowService = &FollowService{}
 
 // Create runs validations needed before creating new Follow database records.
@@ -78,7 +81,7 @@ func (fv *followValidator) followExists(follow *domain.Follow) error {
 	err := fv.db.First(follow, follow).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return errs.Errorf(errs.EINVALID, "You don't follow this user.")
+			return errs.Errorf(errs.EINVALID, "You cannot unfollow a user you're not following.")
 		} else {
 			return err
 		}
@@ -118,7 +121,7 @@ func (fv *followValidator) notAlreadyFollowed(follow *domain.Follow) error {
 	return nil
 }
 
-// Create stores the data from the Follow object as a new database record.
+// Create stores the data from the Follow object in a new database record.
 // On success, it eager-loads (preloads) the follower and followed user relations,
 // so that the json response displays the full user data of each.
 func (fg *followGorm) Create(follow *domain.Follow) error {
