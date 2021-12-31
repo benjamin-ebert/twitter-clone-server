@@ -6,18 +6,6 @@ import (
 	"wtfTwitter/errs"
 )
 
-var _ domain.FollowService = &FollowService{}
-
-func NewFollowService(db *gorm.DB) *FollowService {
-	return &FollowService{
-		followValidator{
-			followGorm{
-				db: db,
-			},
-		},
-	}
-}
-
 type FollowService struct {
 	followValidator
 }
@@ -30,15 +18,35 @@ type followGorm struct {
 	db *gorm.DB
 }
 
+func NewFollowService(db *gorm.DB) *FollowService {
+	return &FollowService{
+		followValidator{
+			followGorm{
+				db: db,
+			},
+		},
+	}
+}
+
+var _ domain.FollowService = &FollowService{}
+
 func (fv *followValidator) Create(follow *domain.Follow) error {
 	err := runFollowValFns(follow,
-		fv.followedIsNotFollower,
-		fv.followDoesNotExist,
-		fv.followedExists)
+		fv.followedUserExists,
+		fv.notAlreadyFollowed,
+		fv.followedIsNotFollower)
 	if err != nil {
 		return err
 	}
 	return fv.followGorm.Create(follow)
+}
+
+func (fv *followValidator) Delete(follow *domain.Follow) error {
+	err := runFollowValFns(follow, fv.followExists)
+	if err != nil {
+		return err
+	}
+	return fv.followGorm.Delete(follow)
 }
 
 func runFollowValFns(follow *domain.Follow, fns ...followValFn) error {
@@ -52,30 +60,43 @@ func runFollowValFns(follow *domain.Follow, fns ...followValFn) error {
 
 type followValFn func(follow *domain.Follow) error
 
-func (fv *followValidator) followDoesNotExist(follow *domain.Follow) error {
-	var existing domain.Follow
-	query := fv.db.Where(follow)
-	err := query.First(&existing).Error
-	if err == nil {
-		return errs.AlreadyExists
-	}
-	if err != gorm.ErrRecordNotFound {
-		return err
-	}
-	return nil
-}
-
-func (fv *followValidator) followedExists(follow *domain.Follow) error {
-	err := fv.db.First(&domain.User{ID: follow.FollowedID}).Error
+func (fv *followValidator) followExists(follow *domain.Follow) error {
+	err := fv.db.First(follow, follow).Error
 	if err != nil {
-		return errs.FollowedDoesNotExist
+		if err == gorm.ErrRecordNotFound {
+			return errs.Errorf(errs.EINVALID, "You don't follow this user.")
+		} else {
+			return err
+		}
 	}
 	return nil
 }
 
 func (fv *followValidator) followedIsNotFollower(follow *domain.Follow) error {
 	if follow.FollowerID == follow.FollowedID {
-		return errs.FollowedIsFollower
+		return errs.Errorf(errs.EINVALID, "You cannot follow yourself.")
+	}
+	return nil
+}
+
+func (fv *followValidator) followedUserExists(follow *domain.Follow) error {
+	err := fv.db.First(&domain.User{ID: follow.FollowedID}).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return errs.Errorf(errs.EINVALID, "The user to be followed does not exist.")
+		} else {
+			return err
+		}
+	}
+	return nil
+}
+
+func (fv *followValidator) notAlreadyFollowed(follow *domain.Follow) error {
+	err := fv.db.First(follow, follow).Error
+	if err == nil {
+		return errs.Errorf(errs.EINVALID, "You already follow this user.")
+	} else if err != gorm.ErrRecordNotFound {
+		return err
 	}
 	return nil
 }
@@ -90,7 +111,7 @@ func (fg *followGorm) Create(follow *domain.Follow) error {
 }
 
 func (fg *followGorm) Delete(follow *domain.Follow) error {
-	err := fg.db.Where(follow).Delete(follow).Error
+	err := fg.db.Delete(follow).Error
 	if err != nil {
 		return err
 	}
