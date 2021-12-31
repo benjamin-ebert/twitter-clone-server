@@ -102,7 +102,7 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Delete the tweet (plus its direct replies, retweets and likes).
+	// Soft-delete the tweet and its direct replies and retweets. Permanently delete its likes.
 	err = s.ts.DeleteTweet(tweet)
 	if err != nil {
 		errs.ReturnError(w, r, err)
@@ -160,6 +160,15 @@ func (s *Server) handleUploadTweetImages(w http.ResponseWriter, r *http.Request)
 	files := r.MultipartForm.File["images"]
 	if len(files) > 4 {
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Too many images, not more than 4 allowed."))
+		return
+	}
+
+	// Delete all existing images of the tweet. Not necessary if the API call comes from
+	// the frontend app, since the GUI won't allow users to update existing tweets.
+	// It's to prevent potential non-GUI API calls from uploading infinite images.
+	err = s.is.DeleteAll(domain.OwnerTypeTweet, tweet.ID)
+	if err != nil {
+		errs.ReturnError(w, r, err)
 		return
 	}
 
