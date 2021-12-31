@@ -42,7 +42,6 @@ func NewServer(
 	s.registerTweetRoutes(s.router)
 	s.registerLikeRoutes(s.router)
 	s.registerFollowRoutes(s.router)
-	s.registerImageRoutes(s.router)
 
 	s.router.Use(setContentTypeJSON, s.authUser)
 	return s
