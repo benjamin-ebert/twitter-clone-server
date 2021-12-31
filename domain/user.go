@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -9,17 +10,22 @@ type User struct {
 	ID int `json:"id"`
 	Name string `json:"name"`
 	Email string `json:"email"`
+	Avatar string `json:"avatar"`
+	Header string `json:"header"`
+
 	Password string `json:"password" gorm:"-"`
 	PasswordHash string `json:"password_hash"`
 	Remember string `json:"remember" gorm:"-"`
 	RememberHash string `json:"remember_hash"`
+
 	Tweets []Tweet `json:"tweets" gorm:"foreignKey:UserID"`
 	Likes []Like `json:"likes" gorm:"foreignKey:UserID"`
-	Avatar string `json:"avatar"`
-	Header string `json:"header"`
+	Followers []Follow `json:"followers" gorm:"foreignKey:FollowedID"`
+	Followeds []Follow `json:"follows" gorm:"foreignKey:FollowerID"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	//gorm.DeletedAt `json:"deleted_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at"`
 }
 
 type UserService interface {

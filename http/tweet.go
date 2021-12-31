@@ -33,18 +33,18 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 // It determines which type of tweet to create by reading the url parameters, and creates a new
 // tweet record in the database. replies_to_id / retweets_id are IDs of an existing tweet.
 func (s *Server) handleCreateTweet(w http.ResponseWriter, r *http.Request) {
-	// Parse the request's json body into a tweet object.
+	// Parse the request's json body into a Tweet object.
 	var tweet domain.Tweet
 	if err := json.NewDecoder(r.Body).Decode(&tweet); err != nil {
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid json body."))
 		return
 	}
 
-	// Get the authed user's ID and set it as the new tweet's UserID.
+	// Get the authed user's ID and set it as the new Tweet's UserID.
 	user := s.getUserFromContext(r.Context())
 	tweet.UserID = user.ID
 
-	// Parse the ID of the tweet replied to from the url.
+	// If present, parse the ID of the Tweet replied to from the url.
 	if repliesToId, err := strconv.Atoi(mux.Vars(r)["replies_to_id"]); repliesToId > 0 {
 		if err != nil {
 			errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
@@ -53,7 +53,7 @@ func (s *Server) handleCreateTweet(w http.ResponseWriter, r *http.Request) {
 		tweet.RepliesToID = repliesToId
 	}
 
-	// Parse the ID of the tweet retweeted from the url.
+	// If present, parse the ID of the Tweet retweeted from the url.
 	if retweetsId, err := strconv.Atoi(mux.Vars(r)["retweets_id"]); retweetsId > 0 {
 		if err != nil {
 			errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
@@ -62,14 +62,14 @@ func (s *Server) handleCreateTweet(w http.ResponseWriter, r *http.Request) {
 		tweet.RetweetsID = retweetsId
 	}
 
-	// Create the tweet.
+	// Create a new Tweet database record.
 	err := s.ts.CreateTweet(&tweet)
 	if err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
 
-	// Return the created tweet.
+	// Return the created Tweet.
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(tweet); err != nil {
 		errs.LogError(r, err)

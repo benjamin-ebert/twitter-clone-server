@@ -283,6 +283,8 @@ func (ug *userGorm) ByID(id int) (*domain.User, error) {
 		Preload("Tweets.Retweets").
 		Preload("Tweets.Likes").
 		Preload("Likes.Tweet").
+		Preload("Followers.Follower").
+		Preload("Followeds.Followed").
 		First(&user, "id = ?", id).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {

@@ -9,16 +9,17 @@ import (
 	"wtfTwitter/errs"
 )
 
-// registerLikeRoutes is a helper for registering all like routes.
+// registerLikeRoutes is a helper for registering all Like routes.
 func (s *Server) registerLikeRoutes(r *mux.Router) {
 	// Create a new like for a tweet (Like a tweet).
 	r.HandleFunc("/like/{tweet_id:[0-9]+}", s.requireAuth(s.handleCreateLike)).Methods("POST")
+
 	// Delete an existing like of a tweet (Unlike a tweet).
 	r.HandleFunc("/unlike/{tweet_id:[0-9]+}", s.requireAuth(s.handleDeleteLike)).Methods("DELETE")
 }
 
 // handleCreateLike handles the route "POST /like/:tweet_id".
-// It reads the tweet ID from the url and creates a new like record in the database.
+// It reads the tweet ID from the url and creates a new Like record in the database.
 func (s *Server) handleCreateLike(w http.ResponseWriter, r *http.Request) {
 	// Parse the ID of the liked tweet from the url.
 	tweetId, err := strconv.Atoi(mux.Vars(r)["tweet_id"])
@@ -36,7 +37,7 @@ func (s *Server) handleCreateLike(w http.ResponseWriter, r *http.Request) {
 		TweetID: tweetId,
 	}
 
-	// Create the new Like.
+	// Create a new Like database record.
 	err = s.ls.Create(like)
 	if err != nil {
 		errs.ReturnError(w, r, err)

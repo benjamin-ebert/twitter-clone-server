@@ -82,6 +82,7 @@ func (fv *followValidator) followedIsNotFollower(follow *domain.Follow) error {
 
 func (fg *followGorm) Create(follow *domain.Follow) error {
 	err := fg.db.Create(follow).Error
+	fg.db.Preload("Followed").Preload("Follower").First(follow)
 	if err != nil {
 		return err
 	}
