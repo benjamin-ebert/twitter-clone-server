@@ -27,8 +27,8 @@ type Tweet struct {
 
 type TweetService interface {
 	ByID(id int) (*Tweet, error)
-	CreateTweet(tweet *Tweet) error
+	Create(tweet *Tweet) error
 	// ByFollowedID - to have a feed
 	// within that, also append any tweet's images
-	DeleteTweet(tweet *Tweet) error
+	Delete(tweet *Tweet) error
 }

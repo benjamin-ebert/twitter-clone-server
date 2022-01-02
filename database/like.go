@@ -41,7 +41,7 @@ func NewLikeService(db *gorm.DB) *LikeService {
 // If it does not, then this expression becomes invalid and won't compile.
 var _ domain.LikeService = &LikeService{}
 
-// Create runs validations needed before creating new Like database records.
+// Create runs validations needed for creating new Like database records.
 func (lv *likeValidator) Create(like *domain.Like) error {
 	err := runLikeValFns(like,
 		lv.likedTweetExists,
@@ -52,7 +52,7 @@ func (lv *likeValidator) Create(like *domain.Like) error {
 	return lv.likeGorm.Create(like)
 }
 
-// Delete runs validations needed before deleting existing Like database records.
+// Delete runs validations needed for deleting existing Like database records.
 func (lv *likeValidator) Delete(like *domain.Like) error {
 	err := runLikeValFns(like, lv.likeExists)
 	if err != nil {

@@ -41,7 +41,7 @@ func NewFollowService(db *gorm.DB) *FollowService {
 // If it does not, then this expression becomes invalid and won't compile.
 var _ domain.FollowService = &FollowService{}
 
-// Create runs validations needed before creating new Follow database records.
+// Create runs validations needed for creating new Follow database records.
 func (fv *followValidator) Create(follow *domain.Follow) error {
 	err := runFollowValFns(follow,
 		fv.followedUserExists,
@@ -53,7 +53,7 @@ func (fv *followValidator) Create(follow *domain.Follow) error {
 	return fv.followGorm.Create(follow)
 }
 
-// Delete runs validations needed before deleting existing Follow database records.
+// Delete runs validations needed for deleting existing Follow database records.
 func (fv *followValidator) Delete(follow *domain.Follow) error {
 	err := runFollowValFns(follow, fv.followExists)
 	if err != nil {

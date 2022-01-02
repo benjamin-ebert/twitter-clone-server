@@ -63,7 +63,7 @@ func (s *Server) handleCreateTweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create a new Tweet database record.
-	err := s.ts.CreateTweet(&tweet)
+	err := s.ts.Create(&tweet)
 	if err != nil {
 		errs.ReturnError(w, r, err)
 		return
@@ -102,21 +102,37 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Soft-delete the tweet and its direct replies and retweets. Permanently delete its likes.
-	err = s.ts.DeleteTweet(tweet)
+	// Soft-delete the tweet and its direct replies and retweets.
+	err = s.ts.Delete(tweet)
 	if err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
 
-	// Delete the tweets images.
+	// Permanently delete the tweet's images from disk.
 	err = s.is.DeleteAll(domain.OwnerTypeTweet, tweet.ID)
 	if err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
 
-	// Return the deleted tweet.
+	// Permanently delete the tweet's replies' images from disk.
+	for _, reply := range tweet.Replies {
+		if err := s.is.DeleteAll(domain.OwnerTypeTweet, reply.ID); err != nil {
+			errs.ReturnError(w, r, err)
+			return
+		}
+	}
+
+	// Permanently delete the tweet's retweets' images from disk.
+	for _, retweet := range tweet.Retweets {
+		if err := s.is.DeleteAll(domain.OwnerTypeTweet, retweet.ID); err != nil {
+			errs.ReturnError(w, r, err)
+			return
+		}
+	}
+
+	// Return the soft-deleted tweet.
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(tweet); err != nil {
 		errs.LogError(r, err)
