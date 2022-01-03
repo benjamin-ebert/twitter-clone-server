@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"regexp"
@@ -14,27 +13,21 @@ import (
 	"wtfTwitter/errs"
 )
 
-//var _ domain.UserService = (*UserService)(nil)
-var _ domain.UserService = &UserService{}
+// TODO: have a proper config mechanism for this, or refactor auth / user so that only auth needs constants.
+const (
+	Pepper = "secret-pepper"
+	hmacKey = "secret-hmac-key"
+)
 
-func NewUserService(db *gorm.DB) *UserService {
-	return &UserService{
-		userValidator{
-			hmac:     auth.NewHMAC("blerz"),
-			pepper:   "blerz",
-			emailRegex: regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
-
-			userGorm: userGorm{
-				db: db,
-			},
-		},
-	}
-}
-
+// UserService manages Users.
+// It implements the domain.UserService interface.
 type UserService struct {
 	userValidator
 }
 
+// userValidator runs validations on incoming User data.
+// On success, it passes the data on to userGorm.
+// Otherwise, it returns the error of the validation that has failed.
 type userValidator struct {
 	hmac auth.HMAC
 	pepper string
@@ -42,42 +35,47 @@ type userValidator struct {
 	userGorm
 }
 
+// userGorm runs CRUD operations on the database using incoming User data.
+// It assumes that data has been validated. On success, it returns nil.
+// Otherwise, it returns the error of the operation that has failed.
 type userGorm struct {
 	db *gorm.DB
 }
 
-func (u *UserService) ByID(id int) (*domain.User, error) {
-	fmt.Println("INSIDE UserService@ByID: ", id)
-	return u.userValidator.ByID(id)
+// NewUserService returns an instance of UserService.
+func NewUserService(db *gorm.DB) *UserService {
+	return &UserService{
+		userValidator{
+			hmac:     auth.NewHMAC(hmacKey),
+			pepper:   Pepper,
+			emailRegex: regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
+			userGorm: userGorm{
+				db: db,
+			},
+		},
+	}
 }
 
-func (u *UserService) FindUsers(ctx context.Context, filter domain.UserFilter) ([]*domain.User, int, error) {
-	panic("implement me")
+// Ensure the UserService struct properly implements the domain.UserService interface.
+// If it does not, then this expression becomes invalid and won't compile.
+var _ domain.UserService = &UserService{}
+
+// ByRemember runs validations / normalizations on a user's remember token. It then passes
+// the HASHED remember token on to userGorm.ByRemember, will look it up in the database.
+func (uv *userValidator) ByRemember(token string) (*domain.User, error) {
+	user := domain.User{
+		Remember: token,
+	}
+	if err := runUserValFns(&user, uv.rememberHmac); err != nil {
+		return nil, err
+	}
+	return uv.userGorm.ByRemember(user.RememberHash)
 }
 
-func (u *UserService) CreateUser(ctx context.Context, user *domain.User) error {
-	fmt.Println("INSIDE UserService@CREATE: ", user)
-	//err := u.db.Create(user).Error
-	//if err != nil {
-	//	return err
-	//}
-	return u.userValidator.CreateUser(ctx, user)
-}
-
-func (u *UserService) UpdateUser(ctx context.Context, user *domain.User) error {
-	fmt.Println("INSIDE UserService@UPDATE: ", user)
-	return u.userValidator.UpdateUser(ctx, user)
-}
-
-func (u *UserService) DeleteUser(ctx context.Context, id int) error {
-	panic("implement me")
-}
-
-// CreateUser will create the provided user and backfill data
-// like the ID, CreatedAt, and UpdatedAt fields.
-func (uv *userValidator) CreateUser(ctx context.Context, user *domain.User) error {
-	fmt.Println("INSIDE userValidator@CREATE: ", user)
-	err := runUserValFuncs(user,
+// Create runs validations needed for creating new User database records.
+// It will create a remember token if none is provided.
+func (uv *userValidator) Create(ctx context.Context, user *domain.User) error {
+	err := runUserValFns(user,
 		uv.passwordRequired,
 		uv.passwordMinLength,
 		uv.passwordBcrypt,
@@ -93,13 +91,13 @@ func (uv *userValidator) CreateUser(ctx context.Context, user *domain.User) erro
 	if err != nil {
 		return err
 	}
-	return uv.userGorm.CreateUser(ctx, user)
+	return uv.userGorm.Create(ctx, user)
 }
 
-// UpdateUser will hash a remember token if it is provided.
-func (uv *userValidator) UpdateUser(ctx context.Context, user *domain.User) error {
-	fmt.Println("INSIDE userValidator@UPDATE: ", user)
-	err := runUserValFuncs(user,
+// Update runs validations needed for updating a User record in the database.
+// It will hash a remember token if it is provided (and will not return an error if not).
+func (uv *userValidator) Update(ctx context.Context, user *domain.User) error {
+	err := runUserValFns(user,
 		uv.passwordMinLength,
 		uv.passwordBcrypt,
 		uv.passwordHashRequired,
@@ -110,32 +108,17 @@ func (uv *userValidator) UpdateUser(ctx context.Context, user *domain.User) erro
 		uv.emailRequired,
 		uv.emailFormat,
 		uv.emailIsAvail,
-		// validate upload image name?
 		)
 	if err != nil {
 		return err
 	}
-	return uv.userGorm.UpdateUser(ctx, user)
+	return uv.userGorm.Update(ctx, user)
 }
 
-func (uv *userValidator) FindUserByRemember(token string) (*domain.User, error) {
-	user := domain.User{
-		Remember: token,
-	}
-	if err := runUserValFuncs(&user, uv.rememberHmac); err != nil {
-		return nil, err
-	}
-	return uv.userGorm.FindUserByRemember(user.RememberHash)
-}
-
-type userValFunc func(user *domain.User) error
-
-func runUserValFuncs(user *domain.User, fns ...userValFunc) error {
-	i := 0
+// runUserValFns runs any number of functions of type userValFn on the passed in User object.
+// If none of them returns an error, it returns nil. Otherwise, it returns the respective error.
+func runUserValFns(user *domain.User, fns ...userValFn) error {
 	for _, fn := range fns {
-		i++
-		fmt.Println(i)
-		fmt.Println("INSIDE runUserValFuncs: ", user)
 		if err := fn(user); err != nil {
 			return err
 		}
@@ -143,46 +126,55 @@ func runUserValFuncs(user *domain.User, fns ...userValFunc) error {
 	return nil
 }
 
+// A userValFn is any function that takes in a pointer to a domain.User object and returns an error.
+type userValFn func(user *domain.User) error
+
+// emailFormat makes sure that a provided email address matches a predefined regex pattern.
 func (uv *userValidator) emailFormat(user *domain.User) error {
 	if user.Email == "" {
 		return nil
 	}
 	if !uv.emailRegex.MatchString(user.Email) {
-		return errs.EmailInvalid
+		return errs.Errorf(errs.EINVALID, "The email address is invalid.")
 	}
 	return nil
 }
 
+// emailIsAvail makes sure that a provided email address is not yet taken.
 func (uv *userValidator) emailIsAvail(user *domain.User) error {
-	existing, err := uv.userGorm.FindUserByEmail(user.Email)
-	if err == errs.NotFound {
-		return nil // Address is not taken.
+	existing, err := uv.userGorm.ByEmail(user.Email)
+	if err == gorm.ErrRecordNotFound {
+		// Address is not taken.
+		return nil
 	}
 	if err != nil {
 		return err
 	}
-	if user.ID != existing.ID { // If they are the same, it's just an update.
-		return errs.EmailTaken
+	if user.ID != existing.ID {
+		// Email found, and the passed in user is not the owner of that email.
+		return errs.Errorf(errs.EINVALID, "This email address is already taken.")
 	}
 	return nil
 }
 
+// emailNormalize converts the email to all lowercase and trims its whitespaces.
 func (uv *userValidator) emailNormalize(user *domain.User) error {
 	user.Email = strings.ToLower(user.Email)
 	user.Email = strings.TrimSpace(user.Email)
 	return nil
 }
 
+// emailRequired makes sure that the email is not the empty string.
 func (uv *userValidator) emailRequired(user *domain.User) error {
 	if user.Email == "" {
-		return errs.EmailRequired
+		return errs.Errorf(errs.EINVALID, "An email address is required.")
 	}
 	return nil
 }
 
-// passwordBcrypt hashes a user's password with a
-// predefined pepper (userPwPepper) and bcrypts it,
-// if the Password field is not the empty string.
+// passwordBcrypt hashes a user's password with a predefined pepper.
+// It bcrypts it, if the Password field is not the empty string.
+// It then clears the password on the user object in memory for security reasons.
 func (uv *userValidator) passwordBcrypt(user *domain.User) error {
 	if user.Password == "" {
 		return nil
@@ -197,30 +189,34 @@ func (uv *userValidator) passwordBcrypt(user *domain.User) error {
 	return nil
 }
 
+// passwordHashRequired makes sure that the user's password hash is not the empty string.
 func (uv *userValidator) passwordHashRequired(user *domain.User) error {
 	if user.PasswordHash == "" {
-		return errs.PasswordRequired
+		return errs.Errorf(errs.EINVALID, "A password is required.")
 	}
 	return nil
 }
 
+// passwordMinLength makes sure that the user's password is at least 8 characters long.
 func (uv *userValidator) passwordMinLength(user *domain.User) error {
 	if user.Password == "" {
 		return nil
 	}
 	if utf8.RuneCountInString(user.Password) < 8 {
-		return errs.PasswordTooShort
+		return errs.Errorf(errs.EINVALID, "The password must have at least 8 characters.")
 	}
 	return nil
 }
 
+// passwordRequired makes sure that the user's password is not the empty string.
 func (uv *userValidator) passwordRequired(user *domain.User) error {
 	if user.Password == "" {
-		return errs.PasswordRequired
+		return errs.Errorf(errs.EINVALID, "A password is required.")
 	}
 	return nil
 }
 
+// rememberHashRequired makes sure the user's remember token hash is not the empty string.
 func (uv *userValidator) rememberHashRequired(user *domain.User) error {
 	if user.RememberHash == "" {
 		return errs.RememberRequired
@@ -228,6 +224,7 @@ func (uv *userValidator) rememberHashRequired(user *domain.User) error {
 	return nil
 }
 
+// rememberHmac creates the user's remember token hash, if a remember token has been provided.
 func (uv *userValidator) rememberHmac(user *domain.User) error {
 	if user.Remember == "" {
 		return nil
@@ -236,6 +233,7 @@ func (uv *userValidator) rememberHmac(user *domain.User) error {
 	return nil
 }
 
+// rememberMinBytes makes sure that the user's remember token is not too short.
 func (uv *userValidator) rememberMinBytes(user *domain.User) error {
 	if user.Remember == "" {
 		return nil
@@ -250,6 +248,7 @@ func (uv *userValidator) rememberMinBytes(user *domain.User) error {
 	return nil
 }
 
+// rememberSetIfUnset creates the user's remember token if none is provided.
 func (uv *userValidator) rememberSetIfUnset(user *domain.User) error {
 	if user.Remember != "" {
 		return nil
@@ -262,20 +261,8 @@ func (uv *userValidator) rememberSetIfUnset(user *domain.User) error {
 	return nil
 }
 
-func (ug *userGorm) CreateUser(ctx context.Context, user *domain.User) error {
-	fmt.Println("INSIDE userGorm@CREATE: ", user)
-	err := ug.db.Create(user).Error
-	if err != nil {
-		 return err
-	}
-	return nil
-}
-
-func (ug *userGorm) UpdateUser(ctx context.Context, user *domain.User) error {
-	fmt.Println("INSIDE userGorm@UPDATE: ", user)
-	return ug.db.Save(user).Error
-}
-
+// ByID retrieves a User database record by ID, along with its associated Tweets, Likes, Followers
+// and "Followeds" (users who the user is following), along with their most relevant associations.
 func (ug *userGorm) ByID(id int) (*domain.User, error) {
 	var user domain.User
 	err := ug.db.
@@ -296,24 +283,39 @@ func (ug *userGorm) ByID(id int) (*domain.User, error) {
 	return &user, nil
 }
 
-func (ug *userGorm) FindUserByEmail(email string) (*domain.User, error) {
+// ByEmail retrieves a User database record by Email.
+func (ug *userGorm) ByEmail(email string) (*domain.User, error) {
 	var user domain.User
 	db := ug.db.Where("email = ?", email)
 	err := first(db, &user)
 	return &user, err
 }
 
-func (ug *userGorm) FindUserByRemember(rememberHash string) (*domain.User, error) {
+// ByRemember retrieves a User database record by its hashed remember token.
+// The checkUser middleware calls this on every request, trying to identify a user
+// by matching a request cookie's remember token to a hashed remember token in the database.
+func (ug *userGorm) ByRemember(rememberHash string) (*domain.User, error) {
 	var user domain.User
 	db := ug.db.Where("remember_hash = ?", rememberHash)
 	err := first(db, &user)
 	return &user, err
 }
 
-func first(db *gorm.DB, dst interface{}) error {
-	err := db.First(dst).Error
-	if err == gorm.ErrRecordNotFound {
-		return errs.NotFound
+// Create stores the data from the User object in a new database record.
+func (ug *userGorm) Create(ctx context.Context, user *domain.User) error {
+	err := ug.db.Create(user).Error
+	if err != nil {
+		return err
 	}
-	return err
+	return nil
+}
+
+// Update saves changes to an existing user record in the database.
+func (ug *userGorm) Update(ctx context.Context, user *domain.User) error {
+	return ug.db.Save(user).Error
+}
+
+// first is a helper for getting the first database record that matches a given query.
+func first(db *gorm.DB, dst interface{}) error {
+	return db.First(dst).Error
 }

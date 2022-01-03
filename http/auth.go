@@ -3,192 +3,275 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
-	"io"
+	"gorm.io/gorm"
 	"net/http"
 	"time"
 	"wtfTwitter/auth"
+	"wtfTwitter/database"
 	"wtfTwitter/domain"
 	"wtfTwitter/errs"
 )
 
+const (
+	ctxUserKey = "user"
+	pepper = database.Pepper
+)
+
+// registerAuthRoutes is a helper for registering all authentication routes.
 func (s *Server) registerAuthRoutes(r *mux.Router) {
+	// Register a new user.
 	r.HandleFunc("/register", s.handleRegister).Methods("POST")
+
+	// Login an existing user.
 	r.HandleFunc("/login", s.handleLogin).Methods("POST")
+
+	// Logout a logged-in user.
 	r.HandleFunc("/logout", s.handleLogout).Methods("POST")
+
+	// Display the home / login page.
 	r.HandleFunc("/home", s.handleHome).Methods("GET")
 }
 
+// handleRegister creates a new user record in the database and signs the user in.
 func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
-		fmt.Println("err reading register data from request body: ", err)
-	}
+	// Parse the request's json body into a User object.
 	var user domain.User
-	err = json.Unmarshal(data, &user)
-	if err != nil {
-		fmt.Println("err unmarshalling register data into user obj: ", err)
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid json body."))
+		return
 	}
-	err = s.us.CreateUser(r.Context(), &user)
+
+	// Create a new user record in the database.
+	err := s.us.Create(r.Context(), &user)
 	if err != nil {
-		fmt.Println("err creating new user: ", err)
+		errs.ReturnError(w, r, err)
+		return
 	}
+
+	// Sign the new user in (through a remember token and a cookie).
 	err = s.signIn(w, r.Context(), &user)
 	if err != nil {
-		fmt.Println("err signing in new user: ", err)
+		errs.ReturnError(w, r, err)
+		return
 	}
 
-	response := make(map[string]string)
-	response["message"] = "successfully registered"
-	err = json.NewEncoder(w).Encode(&response)
-	if err != nil {
-		fmt.Println("err returning success message as json: ", err)
+	// Return the created user.
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(&user); err != nil {
+		errs.LogError(r, err)
+		return
 	}
 }
 
+// handleLogin authenticates a user and signs them in on success.
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
-		fmt.Println("err reading login data from request body: ", err)
-	}
+	// Parse the request's json body (email and password) into a User object.
 	var user domain.User
-	json.Unmarshal(data, &user)
-	authUser, err := s.authenticate(user.Email, user.Password)
-	if err != nil {
-		switch err {
-		case errs.NotFound:
-			fmt.Println("email doesn't exist in our database", err)
-		default:
-			fmt.Println("err authenticating", err)
-		}
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid json body."))
 		return
 	}
-	err = s.signIn(w, r.Context(), authUser)
-	if err != nil {
-		fmt.Println("err signing in after authentication", err)
-		return
-	}
-	fmt.Println("Worked like a charm")
 
-	response := make(map[string]string)
-	response["message"] = "successfully logged in"
-	err = json.NewEncoder(w).Encode(&response)
+	// Authenticate the user.
+	authedUser, err := s.authenticate(user.Email, user.Password)
 	if err != nil {
-		fmt.Println("err returning success message as json: ", err)
+		errs.ReturnError(w, r, err)
+		return
+	}
+
+	// Sign the user in (through a remember token and a cookie).
+	err = s.signIn(w, r.Context(), authedUser)
+	if err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+
+	// Return the logged-in user.
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(&authedUser); err != nil {
+		errs.LogError(r, err)
+		return
 	}
 }
 
+// handleLogout logs a user out by updating their remember token and invalidating their cookie.
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	// Get the authed user from the request's context.
+	user := s.getUserFromContext(r.Context())
+
+	// If the context has no user, the user is already logged out. Just redirect to home / login.
+	if user == nil {
+		http.Redirect(w, r, "/home", http.StatusFound)
+		return
+	}
+
+	// Create a new remember token and replace the user's current one with it.
+	token, _ := auth.MakeRememberToken()
+	user.Remember = token
+
+	// Update the user's record in the database.
+	if err := s.us.Update(r.Context(), user); err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+	
+	// Create a new http.Cookie that has an empty remember_token and expires immediately.
 	cookie := http.Cookie{
 		Name: "remember_token",
 		Value: "",
 		Expires: time.Now(),
 		HttpOnly: true,
 	}
+
+	// Add the new cookie to the response.
 	http.SetCookie(w, &cookie)
-	user := s.getUserFromContext(r.Context())
-	token, _ := auth.MakeRememberToken()
-	user.Remember = token
-	err := s.us.UpdateUser(r.Context(), user)
-	if err != nil {
-		fmt.Println("err updating user with new remember token: ", err)
-	}
-	//http.Redirect(w, r, "/profile", http.StatusFound)
+
+	// Return a success message.
 	response := make(map[string]string)
-	response["message"] = "successfully logged out"
-	err = json.NewEncoder(w).Encode(&response)
-	if err != nil {
-		fmt.Println("err returning success message as json: ", err)
+	response["message"] = "Successfully logged out."
+	if err := json.NewEncoder(w).Encode(&response); err != nil {
+		errs.LogError(r, err)
+		return
 	}
 }
 
-// handleHome will later redirect to a register / login / landing page
+// handleHome displays the home / login page.
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	response := make(map[string]string)
-	response["message"] = "welcome home"
-	json.NewEncoder(w).Encode(&response)
+	response["message"] = "Welcome home."
+	if err := json.NewEncoder(w).Encode(&response); err != nil {
+		errs.LogError(r, err)
+		return
+	}
 }
 
-// signIn is used to sign the given user in via cookies
+// signIn signs a given user in through a cookie and a remember token.
 func (s *Server) signIn(w http.ResponseWriter, ctx context.Context, user *domain.User) error {
+	// If the user doesn't have a remember token, create a new one, 
+	// assign it to them and update their database record.
 	if user.Remember == "" {
 		token, err := auth.MakeRememberToken()
 		if err != nil {
 			return err
 		}
 		user.Remember = token
-		err = s.us.UpdateUser(ctx, user)
+		err = s.us.Update(ctx, user)
 		if err != nil {
 			return err
 		}
 	}
 
+	// Create a new http.Cookie containing the user's (updated) remember token.
 	cookie := http.Cookie{
 		Name:     "remember_token",
 		Value:    user.Remember,
 		HttpOnly: true,
 	}
+	
+	// Add the cookie to the response. From now the remember token is passed back and forth via cookie.
 	http.SetCookie(w, &cookie)
-	fmt.Println("COOKIE COOKIE COOKIE: ", cookie)
+
+	// Clear the remember token from the user object in memory for security reasons.
+	// Only the remember token in the cookie and the hashed remember token in the database are left.
+	user.Remember = ""
+
 	return nil
 }
 
+// authenticate checks a submitted email address and password for existence and correctness.
 func (s *Server) authenticate(email, password string) (*domain.User, error) {
-	found, err := s.us.FindUserByEmail(email)
+	// Look for a user database record containing the submitted email address.
+	found, err := s.us.ByEmail(email)
 	if err != nil {
-		return nil, err
-	}
-	err = bcrypt.CompareHashAndPassword([]byte(found.PasswordHash), []byte(password + "blerz"))
-	if err != nil {
-		switch err {
-		case bcrypt.ErrMismatchedHashAndPassword:
-			return nil, errs.PasswordIncorrect
-		default:
+		if err == gorm.ErrRecordNotFound {
+			return nil, errs.Errorf(errs.EINVALID, "The email address does not exist in our database.")
+		} else {
 			return nil, err
 		}
 	}
+
+	// Append a predefined pepper to the submitted password, hash it, and compare the result to the
+	// password hash stored in the user's database record. If they match, the submitted password is correct.
+	err = bcrypt.CompareHashAndPassword([]byte(found.PasswordHash), []byte(password + pepper))
+	if err != nil {
+		if err == bcrypt.ErrMismatchedHashAndPassword {
+			return nil, errs.Errorf(errs.EINVALID, "The password is incorrect.")
+		} else {
+			return nil, err
+		}
+	}
+
+	// Return the now authenticated user and a nil error.
 	return found, nil
 }
 
-func (s *Server) authUser(next http.Handler) http.Handler {
+// The checkUser middleware reads an incoming request's cookie, checks if its remember token
+// matches a user database record, and on success attaches that user to the request context.
+// Subsequent request handlers can read the current user from the request's context. If the
+// cookie's remember token did not match a user record, the request's context does not change.
+// checkUser always returns the next request handler (usually that's the requireAuth middleware).
+func (s *Server) checkUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Read the request's cookie named remember_token.
 		cookie, err := r.Cookie("remember_token")
+		// If the cookie can't be read / does not exist, return the subsequent request handler.
 		if err != nil {
 			next.ServeHTTP(w, r)
 			return
 		}
-		user, err := s.us.FindUserByRemember(cookie.Value)
+
+		// Look for a user database record matching the cookie's remember token value.
+		user, err := s.us.ByRemember(cookie.Value)
+		// If such a record does not exist, return the subsequent request handler.
 		if err != nil {
 			next.ServeHTTP(w, r)
 			return
 		}
+
+		// Create a context.Context for the request.
 		ctx := r.Context()
-		//ctx = context.WithValue(ctx, "user", user)
+
+		// Put the found user into the request's context.
 		ctx = s.setUserInContext(ctx, user)
+
+		// Attach the context to the request.
 		r = r.WithContext(ctx)
+
+		// Return subsequent request handler.
 		next.ServeHTTP(w, r)
 	})
 }
 
+// The requireAuth middleware prevents unauthenticated users from accessing things
+// that require authentication. It does that by trying to read the authenticated user
+// from the request's context. If it fails, it redirects to the home / login page.
+// Otherwise, it returns the subsequent authed-users-only handler.
 func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := s.getUserFromContext(r.Context())
-		if user == nil {
+		// Get the authed user from the request's context.
+		if user := s.getUserFromContext(r.Context()); user == nil {
 			http.Redirect(w, r, "/home", http.StatusFound)
 			return
 		}
+		// Return the subsequent request handler.
 		next.ServeHTTP(w, r)
 	})
 }
 
+// setUserInContext takes a context and a user and puts the user into the context.
 func (s *Server) setUserInContext(ctx context.Context, user *domain.User) context.Context {
-	return context.WithValue(ctx, "user", user)
+	// Within the context set a user-key that other functions can access
+	// to get the user-value. Set the user as the context's user-value.
+	return context.WithValue(ctx, ctxUserKey, user)
 }
 
+// getUserFromContext takes a context, reads a user from it, and returns the user.
 func (s *Server) getUserFromContext(ctx context.Context) *domain.User {
-	if temp := ctx.Value("user"); temp != nil {
+	// Try to read the value of the context's user-key into temp.
+	if temp := ctx.Value(ctxUserKey); temp != nil {
+		// Assert that the type of the value stored in temp is identical to type *domain.User.
 		if user, ok := temp.(*domain.User); ok {
 			return user
 		}

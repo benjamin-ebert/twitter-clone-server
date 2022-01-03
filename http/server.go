@@ -43,7 +43,7 @@ func NewServer(
 	s.registerLikeRoutes(s.router)
 	s.registerFollowRoutes(s.router)
 
-	s.router.Use(setContentTypeJSON, s.authUser)
+	s.router.Use(setContentTypeJSON, s.checkUser)
 	return s
 }
 

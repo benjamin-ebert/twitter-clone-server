@@ -106,7 +106,7 @@ func (s *Server) handleUploadUserImages(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Update the user record in the database.
-	err = s.us.UpdateUser(r.Context(), user)
+	err = s.us.Update(r.Context(), user)
 	if err != nil {
 		errs.ReturnError(w, r, err)
 		return
@@ -181,7 +181,7 @@ func (s *Server) handleDeleteUserImages(w http.ResponseWriter, r *http.Request) 
 	 }
 
 	 // Update the user's database record.
-	 err = s.us.UpdateUser(r.Context(), user)
+	 err = s.us.Update(r.Context(), user)
 	 if err != nil {
 		  errs.ReturnError(w, r, err)
 		  return

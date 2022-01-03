@@ -30,12 +30,10 @@ type User struct {
 
 type UserService interface {
 	ByID(id int) (*User, error)
-	FindUserByEmail(email string) (*User, error)
-	FindUserByRemember(token string) (*User, error)
-	//FindUsers(ctx context.Context, filter UserFilter) ([]*User, int, error)
-	CreateUser(ctx context.Context, user *User) error
-	UpdateUser(ctx context.Context, user *User) error
-	//DeleteUser(ctx context.Context, id int) error
+	ByEmail(email string) (*User, error)
+	ByRemember(token string) (*User, error)
+	Create(ctx context.Context, user *User) error
+	Update(ctx context.Context, user *User) error
 }
 
 type UserFilter struct {
