@@ -42,12 +42,14 @@ func NewServer(
 		is: is,
 	}
 
-	// Register all routes.
+	// Register routes of the auth system.
 	s.registerAuthRoutes(s.router)
-	s.registerUserRoutes(s.router)
+
+	// Register routes of the crud system.
 	s.registerTweetRoutes(s.router)
 	s.registerLikeRoutes(s.router)
 	s.registerFollowRoutes(s.router)
+	s.registerImageRoutes(s.router)
 
 	// Set up middleware that needs to run on every request.
 	s.router.Use(setContentTypeJSON, s.checkUser)
