@@ -23,7 +23,7 @@ todo:
   - [x] list user tweets
   - [ ] feed of tweets by followed users
 - [x] follow / unfollow
-  - [ ] declare proper self-ref. m2m with gorm?
+  - [x] declare proper self-ref. m2m with gorm?
 - [x] reply
 - [x] retweet
 - [x] like 
@@ -56,3 +56,34 @@ todo:
 - [ ] push
 - [ ] test build
 - [ ] readme
+
+sucks:
+- auth package
+- database.user needs stuff from auth package
+- http.auth needs stuff from auth package
+- server is really just a router with half an auth system
+- database is really a crud package
+
+better:
+- package main
+  - main
+  - server
+  - postgres
+  - config
+- package auth
+  - hmac
+  - token
+  - service -> contains auth logic and has access to crud.user
+- package database -> package crud
+  - gets its hmac/pepper shit directly at construction, provided by main.config
+- package server -> package http / router / handler
+- ???
+
+might work like this:
+- stuff from the auth package into database/user
+- stuff from http/auth into http/user
+- database/postgres to ./postgres (like config)
+- rename database/ to crud/
+- http/server to ./server?
+- rename http/user to http/auth?
+- or put http/user into auth/user?

@@ -9,25 +9,28 @@ import (
 	"wtfTwitter/domain"
 )
 
+// DB provides the database connection.
 type DB struct {
+	// Object-relational mapping.
 	Gorm *gorm.DB
-	//ctx context.Context
-
-	DSN string
+	// Connection info string containing database name, user, port etc.
+	ConnectionInfo string
 }
 
-func NewDB(dsn string) *DB {
+// NewDB returns a new instance of DB.
+func NewDB(connectionInfo string) *DB {
 	db := &DB{
-		DSN: dsn,
+		ConnectionInfo: connectionInfo,
 	}
 	return db
 }
 
+// Open opens a new database connection.
 func Open(db *DB) (err error) {
-	if db.DSN == "" {
-		return fmt.Errorf("dsn required")
+	if db.ConnectionInfo == "" {
+		return fmt.Errorf("connectionInfo required")
 	}
-	db.Gorm, err = gorm.Open(postgres.Open(db.DSN), &gorm.Config{
+	db.Gorm, err = gorm.Open(postgres.Open(db.ConnectionInfo), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {

@@ -7,13 +7,16 @@ import (
 )
 
 func main() {
-	db := database.NewDB("host=localhost user=postgres dbname=wtf_twitter port=5432 sslmode=disable")
+	config := LoadConfig()
+	dbConfig := config.Database
+
+	db := database.NewDB(dbConfig.ConnectionInfo())
 	err := database.Open(db)
 	if err != nil {
 		panic(err)
 	}
 
-	userService := database.NewUserService(db.Gorm)
+	userService := database.NewUserService(db.Gorm, config.HMACKey, config.Pepper)
 	twitterService := database.NewTweetService(db.Gorm)
 	followService := database.NewFollowService(db.Gorm)
 	likeService := database.NewLikeService(db.Gorm)
@@ -21,5 +24,5 @@ func main() {
 
 	server := http.NewServer(userService, twitterService, followService, likeService, imageService)
 
-	server.Run()
+	server.Run(config.Port)
 }

@@ -29,9 +29,13 @@ type User struct {
 }
 
 type UserService interface {
+	Authenticate(email, password string) (*User, error)
+	MakeRememberToken() (string, error)
+
 	ByID(id int) (*User, error)
 	ByEmail(email string) (*User, error)
 	ByRemember(token string) (*User, error)
+
 	Create(ctx context.Context, user *User) error
 	Update(ctx context.Context, user *User) error
 }

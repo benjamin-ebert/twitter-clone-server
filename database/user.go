@@ -2,21 +2,19 @@ package database
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"hash"
 	"regexp"
 	"strings"
 	"unicode/utf8"
 
-	"wtfTwitter/auth"
 	"wtfTwitter/domain"
 	"wtfTwitter/errs"
-)
-
-// TODO: have a proper config mechanism for this, or refactor auth / user so that only auth needs constants.
-const (
-	Pepper = "secret-pepper"
-	hmacKey = "secret-hmac-key"
 )
 
 // UserService manages Users.
@@ -29,7 +27,7 @@ type UserService struct {
 // On success, it passes the data on to userGorm.
 // Otherwise, it returns the error of the validation that has failed.
 type userValidator struct {
-	hmac auth.HMAC
+	hmac HMAC
 	pepper string
 	emailRegex *regexp.Regexp
 	userGorm
@@ -43,11 +41,11 @@ type userGorm struct {
 }
 
 // NewUserService returns an instance of UserService.
-func NewUserService(db *gorm.DB) *UserService {
+func NewUserService(db *gorm.DB, hmacKey, pepper string) *UserService {
 	return &UserService{
 		userValidator{
-			hmac:     auth.NewHMAC(hmacKey),
-			pepper:   Pepper,
+			hmac:     NewHMAC(hmacKey),
+			pepper:   pepper,
 			emailRegex: regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
 			userGorm: userGorm{
 				db: db,
@@ -59,6 +57,33 @@ func NewUserService(db *gorm.DB) *UserService {
 // Ensure the UserService struct properly implements the domain.UserService interface.
 // If it does not, then this expression becomes invalid and won't compile.
 var _ domain.UserService = &UserService{}
+
+// Authenticate checks a submitted email address and password for existence and correctness.
+func (uv *userValidator) Authenticate(email, password string) (*domain.User, error) {
+	// Look for a user database record containing the submitted email address.
+	found, err := uv.userGorm.ByEmail(email)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errs.Errorf(errs.EINVALID, "The email address does not exist in our database.")
+		} else {
+			return nil, err
+		}
+	}
+
+	// Append a predefined pepper to the submitted password, hash it, and compare the result to the
+	// password hash stored in the user's database record. If they match, the submitted password is correct.
+	err = bcrypt.CompareHashAndPassword([]byte(found.PasswordHash), []byte(password + uv.pepper))
+	if err != nil {
+		if err == bcrypt.ErrMismatchedHashAndPassword {
+			return nil, errs.Errorf(errs.EINVALID, "The password is incorrect.")
+		} else {
+			return nil, err
+		}
+	}
+
+	// Return the now authenticated user and a nil error.
+	return found, nil
+}
 
 // ByRemember runs validations / normalizations on a user's remember token. It then passes
 // the HASHED remember token on to userGorm.ByRemember, will look it up in the database.
@@ -238,7 +263,7 @@ func (uv *userValidator) rememberMinBytes(user *domain.User) error {
 	if user.Remember == "" {
 		return nil
 	}
-	n, err := auth.NBytes(user.Remember)
+	n, err := NBytes(user.Remember)
 	if err != nil {
 		return err
 	}
@@ -253,7 +278,7 @@ func (uv *userValidator) rememberSetIfUnset(user *domain.User) error {
 	if user.Remember != "" {
 		return nil
 	}
-	token, err := auth.MakeRememberToken()
+	token, err := uv.MakeRememberToken()
 	if err != nil {
 		return err
 	}
@@ -319,3 +344,68 @@ func (ug *userGorm) Update(ctx context.Context, user *domain.User) error {
 func first(db *gorm.DB, dst interface{}) error {
 	return db.First(dst).Error
 }
+
+// NewHMAC creates and returns a new HMAC object
+func NewHMAC(key string) HMAC {
+	h := hmac.New(sha256.New, []byte(key))
+	return HMAC{
+		hmac: h,
+	}
+}
+
+// HMAC is a wrapper around the crypto/hmac package making
+// it a little easier to use in our code.
+type HMAC struct {
+	hmac hash.Hash
+}
+
+// Hash will hash the provided input string using HMAC with
+// the secret key provided when the HMAC object was created
+func (h HMAC) Hash(input string) string {
+	h.hmac.Reset()
+	h.hmac.Write([]byte(input))
+	b := h.hmac.Sum(nil)
+	return base64.URLEncoding.EncodeToString(b)
+}
+
+const RememberTokenBytes = 32
+
+// Bytes will help us generate n random bytes, or will
+// return an error if there was one. This uses the crypto/rand
+// package so it is safe to use with things like remember tokens.
+func Bytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+// NBytes returns the number of bytes used in the base64
+// URL encoded string
+func NBytes(base64String string) (int, error) {
+	b, err := base64.URLEncoding.DecodeString(base64String)
+	if err != nil {
+		return -1, err
+	}
+	return len(b), nil
+}
+
+// String will generate a byte slice of size nBytes and then
+// return a string that is the base64 URL encoded version
+// of that byte slice
+func String(nBytes int) (string, error) {
+	b, err := Bytes(nBytes)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+// MakeRememberToken is a helper function designed to generate
+// remember tokens of a predetermined byte size.
+func (uv *userValidator) MakeRememberToken() (string, error) {
+	return String(RememberTokenBytes)
+}
+

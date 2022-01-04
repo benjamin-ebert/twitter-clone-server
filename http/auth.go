@@ -4,19 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 	"net/http"
 	"time"
-	"wtfTwitter/auth"
-	"wtfTwitter/database"
 	"wtfTwitter/domain"
 	"wtfTwitter/errs"
 )
 
 const (
 	ctxUserKey = "user"
-	pepper = database.Pepper
 )
 
 // registerAuthRoutes is a helper for registering all authentication routes.
@@ -28,7 +23,7 @@ func (s *Server) registerAuthRoutes(r *mux.Router) {
 	r.HandleFunc("/login", s.handleLogin).Methods("POST")
 
 	// Logout a logged-in user.
-	r.HandleFunc("/logout", s.handleLogout).Methods("POST")
+	r.HandleFunc("/logout", s.requireAuth(s.handleLogout)).Methods("POST")
 
 	// Display the home / login page.
 	r.HandleFunc("/home", s.handleHome).Methods("GET")
@@ -75,7 +70,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Authenticate the user.
-	authedUser, err := s.authenticate(user.Email, user.Password)
+	authedUser, err := s.us.Authenticate(user.Email, user.Password)
 	if err != nil {
 		errs.ReturnError(w, r, err)
 		return
@@ -101,14 +96,8 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	// Get the authed user from the request's context.
 	user := s.getUserFromContext(r.Context())
 
-	// If the context has no user, the user is already logged out. Just redirect to home / login.
-	if user == nil {
-		http.Redirect(w, r, "/home", http.StatusFound)
-		return
-	}
-
 	// Create a new remember token and replace the user's current one with it.
-	token, _ := auth.MakeRememberToken()
+	token, _ := s.us.MakeRememberToken()
 	user.Remember = token
 
 	// Update the user's record in the database.
@@ -152,7 +141,7 @@ func (s *Server) signIn(w http.ResponseWriter, ctx context.Context, user *domain
 	// If the user doesn't have a remember token, create a new one, 
 	// assign it to them and update their database record.
 	if user.Remember == "" {
-		token, err := auth.MakeRememberToken()
+		token, err := s.us.MakeRememberToken()
 		if err != nil {
 			return err
 		}
@@ -180,32 +169,6 @@ func (s *Server) signIn(w http.ResponseWriter, ctx context.Context, user *domain
 	return nil
 }
 
-// authenticate checks a submitted email address and password for existence and correctness.
-func (s *Server) authenticate(email, password string) (*domain.User, error) {
-	// Look for a user database record containing the submitted email address.
-	found, err := s.us.ByEmail(email)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, errs.Errorf(errs.EINVALID, "The email address does not exist in our database.")
-		} else {
-			return nil, err
-		}
-	}
-
-	// Append a predefined pepper to the submitted password, hash it, and compare the result to the
-	// password hash stored in the user's database record. If they match, the submitted password is correct.
-	err = bcrypt.CompareHashAndPassword([]byte(found.PasswordHash), []byte(password + pepper))
-	if err != nil {
-		if err == bcrypt.ErrMismatchedHashAndPassword {
-			return nil, errs.Errorf(errs.EINVALID, "The password is incorrect.")
-		} else {
-			return nil, err
-		}
-	}
-
-	// Return the now authenticated user and a nil error.
-	return found, nil
-}
 
 // The checkUser middleware reads an incoming request's cookie, checks if its remember token
 // matches a user database record, and on success attaches that user to the request context.
@@ -249,7 +212,7 @@ func (s *Server) checkUser(next http.Handler) http.Handler {
 // from the request's context. If it fails, it redirects to the home / login page.
 // Otherwise, it returns the subsequent authed-users-only handler.
 func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		// Get the authed user from the request's context.
 		if user := s.getUserFromContext(r.Context()); user == nil {
 			http.Redirect(w, r, "/home", http.StatusFound)
@@ -257,7 +220,7 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 		// Return the subsequent request handler.
 		next.ServeHTTP(w, r)
-	})
+	}
 }
 
 // setUserInContext takes a context and a user and puts the user into the context.
