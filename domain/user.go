@@ -6,6 +6,17 @@ import (
 	"time"
 )
 
+// User represents a user account. It stores an email address and a password,
+// so people can log in and access their content.
+// It can have the following relationships:
+// - A self-referential many-to-many rel. with other Users. That happens
+// if the User decides to follow, or starts to get followed by another User.
+// - A one-to-many rel. with a Tweet, since the User can create many Tweets.
+// - A many-to-many rel. with Tweets, through the "pivot" of Likes, since the
+// user can like many Tweets, which in turn can be liked by many Users.
+// - A one-to-many rel. with up to two images, since the user can upload one image
+// for his avatar and one image for his header-picture. The two columns hold the
+// paths to the stored images on the server.
 type User struct {
 	ID int `json:"id"`
 	Name string `json:"name"`
@@ -28,28 +39,21 @@ type User struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at"`
 }
 
+// UserService is a set of methods to manipulate and work with the User model.
+// It also contains the bulk of the authentication system. Specifically it contains
+// that part of the auth-system that needs to interact with the database (hashing
+// and storing remember tokens and passwords, updating those values etc.).
+// It does not contain the part of the auth-system that handles cookies, middleware
+// redirects etc. - this is done by auth.go in the http package.
+// Errors returned by UserService are usually errs.EINVALID or errs.ENOTFOUND and contain
+// info messages for the user. Other errors typically result in an errs.EINTERNAL and are
+// just displaying code 500 with no message.
 type UserService interface {
 	Authenticate(email, password string) (*User, error)
 	MakeRememberToken() (string, error)
-
 	ByID(id int) (*User, error)
 	ByEmail(email string) (*User, error)
 	ByRemember(token string) (*User, error)
-
 	Create(ctx context.Context, user *User) error
 	Update(ctx context.Context, user *User) error
-}
-
-type UserFilter struct {
-	ID *int `json:"id"`
-	Name *string `json:"name"`
-	Email *string `json:"email"`
-
-	Offset int `json:"offset"`
-	Limit int `json:"limit"`
-}
-
-type UserUpdate struct {
-	Name *string `json:"name"`
-	Email *string `json:"email"`
 }
