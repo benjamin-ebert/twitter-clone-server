@@ -85,6 +85,11 @@ func (uv *userValidator) Authenticate(email, password string) (*domain.User, err
 	return found, nil
 }
 
+// MakeRememberToken is helper to generate remember tokens of a predetermined byte size.
+func (uv *userValidator) MakeRememberToken() (string, error) {
+	return String(RememberTokenBytes)
+}
+
 // ByRemember runs validations / normalizations on a user's remember token. It then passes
 // the HASHED remember token on to userGorm.ByRemember, will look it up in the database.
 func (uv *userValidator) ByRemember(token string) (*domain.User, error) {
@@ -287,7 +292,7 @@ func (uv *userValidator) rememberSetIfUnset(user *domain.User) error {
 }
 
 // ByID retrieves a User database record by ID, along with its associated Tweets, Likes, Followers
-// and "Followeds" (users who the user is following), along with their most relevant associations.
+// and "Followeds" (users whom the user is following), along with their most relevant associations.
 func (ug *userGorm) ByID(id int) (*domain.User, error) {
 	var user domain.User
 	err := ug.db.
@@ -345,7 +350,12 @@ func first(db *gorm.DB, dst interface{}) error {
 	return db.First(dst).Error
 }
 
-// NewHMAC creates and returns a new HMAC object
+// HMAC is a wrapper around the crypto/hmac package making it easier to use.
+type HMAC struct {
+	hmac hash.Hash
+}
+
+// NewHMAC creates and returns a new HMAC object.
 func NewHMAC(key string) HMAC {
 	h := hmac.New(sha256.New, []byte(key))
 	return HMAC{
@@ -353,14 +363,8 @@ func NewHMAC(key string) HMAC {
 	}
 }
 
-// HMAC is a wrapper around the crypto/hmac package making
-// it a little easier to use in our code.
-type HMAC struct {
-	hmac hash.Hash
-}
-
-// Hash will hash the provided input string using HMAC with
-// the secret key provided when the HMAC object was created
+// Hash hashes an input string using HMAC with the secret key
+// provided when the HMAC object was created in NewUserService.
 func (h HMAC) Hash(input string) string {
 	h.hmac.Reset()
 	h.hmac.Write([]byte(input))
@@ -370,9 +374,8 @@ func (h HMAC) Hash(input string) string {
 
 const RememberTokenBytes = 32
 
-// Bytes will help us generate n random bytes, or will
-// return an error if there was one. This uses the crypto/rand
-// package so it is safe to use with things like remember tokens.
+// Bytes generates n random bytes or returns an error. It uses the
+// crypto/rand package, so it can be used for things like remember tokens.
 func Bytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
@@ -382,8 +385,7 @@ func Bytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-// NBytes returns the number of bytes used in the base64
-// URL encoded string
+// NBytes returns the number of bytes used in a base64 URL encoded string.
 func NBytes(base64String string) (int, error) {
 	b, err := base64.URLEncoding.DecodeString(base64String)
 	if err != nil {
@@ -392,9 +394,8 @@ func NBytes(base64String string) (int, error) {
 	return len(b), nil
 }
 
-// String will generate a byte slice of size nBytes and then
-// return a string that is the base64 URL encoded version
-// of that byte slice
+// String generates a byte slice of size nBytes and then returns a
+// string that is the base64 URL encoded version of that byte slice.
 func String(nBytes int) (string, error) {
 	b, err := Bytes(nBytes)
 	if err != nil {
@@ -402,10 +403,3 @@ func String(nBytes int) (string, error) {
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
 }
-
-// MakeRememberToken is a helper function designed to generate
-// remember tokens of a predetermined byte size.
-func (uv *userValidator) MakeRememberToken() (string, error) {
-	return String(RememberTokenBytes)
-}
-

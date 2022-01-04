@@ -14,7 +14,6 @@ import (
 // request handling, and middleware. It also performs authentication and
 // authorization before handing things over to one of the database services.
 type Server struct {
-	port int
 	router *mux.Router
 	us domain.UserService
 	ts domain.TweetService
@@ -47,8 +46,8 @@ func NewServer(
 
 	// Register routes of the crud system.
 	s.registerTweetRoutes(s.router)
-	s.registerLikeRoutes(s.router)
 	s.registerFollowRoutes(s.router)
+	s.registerLikeRoutes(s.router)
 	s.registerImageRoutes(s.router)
 
 	// Set up middleware that needs to run on every request.
