@@ -57,33 +57,17 @@ todo:
 - [ ] test build
 - [ ] readme
 
-sucks:
-- auth package
-- database.user needs stuff from auth package
-- http.auth needs stuff from auth package
-- server is really just a router with half an auth system
-- database is really a crud package
-
-better:
-- package main
-  - main
-  - server
-  - postgres
-  - config
-- package auth
-  - hmac
-  - token
-  - service -> contains auth logic and has access to crud.user
-- package database -> package crud
-  - gets its hmac/pepper shit directly at construction, provided by main.config
-- package server -> package http / router / handler
-- ???
-
-might work like this:
-- stuff from the auth package into database/user
-- stuff from http/auth into http/user
-- database/postgres to ./postgres (like config)
-- rename database/ to crud/
-- http/server to ./server?
-- rename http/user to http/auth?
-- or put http/user into auth/user?
+auth:
+- so it's pretty okay as it is now
+- but maybe even better:
+  - folder / package auth, containing:
+    - user.go
+    - http.go
+    - middleware.go
+    - hmac.go
+    - token.go
+  - user needs access to gorm.db, depends on domain/user.go
+  - have an authservice start up in main?
+  - server needs the authservice?
+  - server would then just pull in the auth routes from auth/http
+  - and the middleware from auth/middleware

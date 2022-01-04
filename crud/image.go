@@ -19,10 +19,6 @@ import (
 )
 
 const (
-	// ImagesBaseDir determines the general storage location of uploaded images.
-	ImagesBaseDir = "images"
-	// MaxUploadSize determines the maximum size of files to be uploaded.
-	MaxUploadSize int64 = 5 << 20 // 5 Megabyte
 )
 
 // ImageService manages Images.
@@ -93,10 +89,10 @@ func (iv *imageValidator) belowMaxSize(img *domain.Image) error {
 	if err = resetFilePointer(img); err != nil {
 		return err
 	}
-	if size > MaxUploadSize {
+	if size > domain.MaxUploadSize {
 		return errs.Errorf(
 			errs.EINVALID,
-			"Image " + img.Filename + " exceeds upload size limit of " + strconv.FormatInt(MaxUploadSize/1000000, 10) + "MB.",
+			"Image " + img.Filename + " exceeds upload size limit of " + strconv.FormatInt(domain.MaxUploadSize/1000000, 10) + "MB.",
 			)
 	}
 	return nil
@@ -175,7 +171,7 @@ func resetFilePointer(img *domain.Image) error {
 // destination file inside that path, and copies the file data from the domain.Image object
 // into the destination file. If the path already exists, that one will be used.
 // Images are only stored in the filesystem and have no dedicated table in the database.
-// The users table does have columns to store the paths to a users avatar and header image though.
+// The users table does have columns to store the paths to a user's avatar and header image though.
 func (ic *imageCrud) Create(img *domain.Image) error {
 	path, err := ic.mkImagePath(img.OwnerType, img.OwnerID)
 	if err != nil {
@@ -239,5 +235,5 @@ func (ic *imageCrud) mkImagePath(ownerType string, ownerID int) (string, error) 
 // imagePath builds the name of a path based on the name of the base directory for images,
 // an image's ownerType and its ownerID.
 func (ic *imageCrud) imagePath(ownerType string, ownerID int) string {
-	return fmt.Sprintf("%v/%v/%v/", ImagesBaseDir, ownerType, ownerID)
+	return fmt.Sprintf("%v/%v/%v/", domain.ImagesBaseDir, ownerType, ownerID)
 }

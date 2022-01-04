@@ -5,7 +5,6 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
-	"wtfTwitter/crud"
 	"wtfTwitter/domain"
 	"wtfTwitter/errs"
 )
@@ -35,7 +34,7 @@ func (s *Server) handleUploadUserImages(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Parse the data to be uploaded.
-	err := r.ParseMultipartForm(crud.MaxUploadSize)
+	err := r.ParseMultipartForm(domain.MaxUploadSize)
 	if err != nil {
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, errs.ErrorMessage(err)))
 		return
@@ -191,7 +190,7 @@ func (s *Server) handleUploadTweetImages(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Parse the data to be uploaded.
-	err = r.ParseMultipartForm(crud.MaxUploadSize)
+	err = r.ParseMultipartForm(domain.MaxUploadSize)
 	if err != nil {
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, errs.ErrorMessage(err)))
 		return
