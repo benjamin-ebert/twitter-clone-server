@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"wtfTwitter/database"
+	"wtfTwitter/auth"
+	"wtfTwitter/crud"
 	"wtfTwitter/domain"
-	"wtfTwitter/storage"
 )
 
 // Server provides most of the http functionality of this app, namely routing,
@@ -25,11 +25,11 @@ type Server struct {
 
 // NewServer returns a new instance of the server.
 func NewServer(
-	us *database.UserService,
-	ts *database.TweetService,
-	fs *database.FollowService,
-	ls *database.LikeService,
-	is *storage.ImageService,
+	us *auth.UserService,
+	ts *crud.TweetService,
+	fs *crud.FollowService,
+	ls *crud.LikeService,
+	is *crud.ImageService,
 	) *Server {
 
 	// Construct a new Server with a gorilla router and the services passed in.

@@ -1,26 +1,27 @@
 package main
 
 import (
-	"wtfTwitter/database"
+	"wtfTwitter/auth"
+	"wtfTwitter/crud"
 	"wtfTwitter/http"
-	"wtfTwitter/storage"
 )
 
 func main() {
 	config := LoadConfig()
 	dbConfig := config.Database
 
-	db := database.NewDB(dbConfig.ConnectionInfo())
-	err := database.Open(db)
+	db := NewDB(dbConfig.ConnectionInfo())
+	err := Open(db)
 	if err != nil {
 		panic(err)
 	}
 
-	userService := database.NewUserService(db.Gorm, config.HMACKey, config.Pepper)
-	twitterService := database.NewTweetService(db.Gorm)
-	followService := database.NewFollowService(db.Gorm)
-	likeService := database.NewLikeService(db.Gorm)
-	imageService := storage.NewImageService()
+	userService := auth.NewUserService(db.Gorm, config.HMACKey, config.Pepper)
+
+	twitterService := crud.NewTweetService(db.Gorm)
+	followService := crud.NewFollowService(db.Gorm)
+	likeService := crud.NewLikeService(db.Gorm)
+	imageService := crud.NewImageService()
 
 	server := http.NewServer(userService, twitterService, followService, likeService, imageService)
 

@@ -1,4 +1,4 @@
-package database
+package crud
 
 import (
 	"gorm.io/gorm"

@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"wtfTwitter/domain"
 	"wtfTwitter/errs"
-	"wtfTwitter/storage"
 )
 
 //registerTweetRoutes is a helper for registering all tweet routes.
@@ -23,9 +22,6 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 
 	// Delete a tweet (regardless which type of tweet).
 	r.HandleFunc("/tweet/delete/{id:[0-9]+}", s.requireAuth(s.handleDeleteTweet)).Methods("DELETE")
-
-	// Upload images for an existing tweet.
-	r.HandleFunc("/tweet/images/upload/{id:[0-9]+}", s.requireAuth(s.handleUploadTweetImages)).Methods("POST")
 }
 
 // handleCreateTweet handles the routes:
@@ -133,94 +129,6 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return the soft-deleted tweet.
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(tweet); err != nil {
-		errs.LogError(r, err)
-		return
-	}
-}
-
-// handleUploadTweetImages handles the route "POST /tweet/images/upload/:id"
-// It reads up to 4 uploaded images for a tweet and stores them on disk.
-// Their storage location determines which tweet they belong to. They are not stored in the database.
-func (s *Server) handleUploadTweetImages(w http.ResponseWriter, r *http.Request) {
-	// Parse the tweet ID from the url.
-	id, err := strconv.Atoi(mux.Vars(r)["id"])
-	if err != nil {
-		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
-		return
-	}
-
-	// Fetch the tweet from the database.
-	tweet, err := s.ts.ByID(id)
-	if err != nil {
-		errs.ReturnError(w, r, err)
-		return
-	}
-
-	// Check if the tweet belongs to the authed user.
-	user := s.getUserFromContext(r.Context())
-	if tweet.UserID != user.ID {
-		errs.ReturnError(w, r, errs.Errorf(errs.EUNAUTHORIZED, "You are not allowed to edit this tweet."))
-		return
-	}
-
-	// Parse the data to be uploaded.
-	err = r.ParseMultipartForm(storage.MaxUploadSize)
-	if err != nil {
-		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, errs.ErrorMessage(err)))
-		return
-	}
-
-	// Check if the image count is max 4.
-	files := r.MultipartForm.File["images"]
-	if len(files) > 4 {
-		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Too many images, not more than 4 allowed."))
-		return
-	}
-
-	// Delete all existing images of the tweet. Not necessary if the API call comes from
-	// the frontend app, since the GUI won't allow users to update existing tweets.
-	// It's to prevent potential non-GUI API calls from uploading infinite images.
-	err = s.is.DeleteAll(domain.OwnerTypeTweet, tweet.ID)
-	if err != nil {
-		errs.ReturnError(w, r, err)
-		return
-	}
-
-	// Process the images.
-	for _, fileHeader := range files {
-		// Open the image.
-		 file, err := fileHeader.Open()
-		 if err != nil {
-			 errs.ReturnError(w, r, err)
-			 return
-		 }
-		 defer file.Close()
-		 // Parse it into an Image object.
-		 img := &domain.Image{
-			 OwnerType: domain.OwnerTypeTweet,
-			 OwnerID: id,
-			 File: file,
-			 Filename: fileHeader.Filename,
-		 }
-		 // Save the image to disk (includes validation / normalization).
-		 err = s.is.Create(img)
-		 if err != nil {
-			 errs.ReturnError(w, r, err)
-			 return
-		 }
-	}
-
-	// Fetch the tweet's images.
-	images, err := s.is.ByOwner(domain.OwnerTypeTweet, id)
-	if err != nil {
-		errs.ReturnError(w, r, err)
-		return
-	}
-	tweet.Images = images
-
-	// Return the tweet with its images.
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(tweet); err != nil {
 		errs.LogError(r, err)

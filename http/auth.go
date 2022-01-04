@@ -25,6 +25,9 @@ func (s *Server) registerAuthRoutes(r *mux.Router) {
 	// Logout a logged-in user.
 	r.HandleFunc("/logout", s.requireAuth(s.handleLogout)).Methods("POST")
 
+	// View the authed user and his relationships.
+	r.HandleFunc("/profile", s.requireAuth(s.handleProfile)).Methods("GET")
+
 	// Display the home / login page.
 	r.HandleFunc("/home", s.handleHome).Methods("GET")
 }
@@ -121,6 +124,37 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	response := make(map[string]string)
 	response["message"] = "Successfully logged out."
 	if err := json.NewEncoder(w).Encode(&response); err != nil {
+		errs.LogError(r, err)
+		return
+	}
+}
+
+// handleProfile handles the route "GET /profile".
+// It displays the authed user's data and relationships.
+func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
+	// Get the authed user from the request context.
+	u := s.getUserFromContext(r.Context())
+
+	// Fetch the user from the database, to get all his tweets and likes.
+	user, err := s.us.ByID(u.ID)
+	if err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+
+	// Get the images of the user's tweets.
+	for i, tweet := range user.Tweets {
+		images, err := s.is.ByOwner(domain.OwnerTypeTweet, tweet.ID)
+		if err != nil {
+			errs.ReturnError(w, r, err)
+			return
+		}
+		user.Tweets[i].Images = images
+	}
+
+	// Return the user.
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(&user); err != nil {
 		errs.LogError(r, err)
 		return
 	}
