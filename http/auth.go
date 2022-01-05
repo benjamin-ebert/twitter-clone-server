@@ -10,9 +10,8 @@ import (
 	"wtfTwitter/errs"
 )
 
-const (
-	ctxUserKey = "user"
-)
+// ctxUserKey is the key that allows to retrieve the authed user from the request's context.
+const ctxUserKey = "user"
 
 // registerAuthRoutes is a helper for registering all authentication routes.
 func (s *Server) registerAuthRoutes(r *mux.Router) {
