@@ -125,7 +125,7 @@ func (uv *userValidator) Create(ctx context.Context, user *domain.User) error {
 }
 
 // Update runs validations needed for updating a User record in the database.
-// It will hash a remember token if it is provided (and will not return an error if not).
+// It will hash a remember token if it is provided (and will not return an error if it's not).
 func (uv *userValidator) Update(ctx context.Context, user *domain.User) error {
 	err := runUserValFns(user,
 		uv.passwordMinLength,
@@ -249,7 +249,7 @@ func (uv *userValidator) passwordRequired(user *domain.User) error {
 // rememberHashRequired makes sure the user's remember token hash is not the empty string.
 func (uv *userValidator) rememberHashRequired(user *domain.User) error {
 	if user.RememberHash == "" {
-		return errs.RememberRequired
+		return errs.RememberHashEmpty
 	}
 	return nil
 }

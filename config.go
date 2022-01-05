@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+// Config represents a set of configurations needed to run the app.
 type Config struct {
 	Port int `json:"port"`
 	Env string `json:"env"`
@@ -14,6 +15,7 @@ type Config struct {
 	Database PostgresConfig `json:"database"`
 }
 
+// PostgresConfig represents configurations needed to connect to a postgres database.
 type PostgresConfig struct {
 	Host string `json:"host"`
 	Port int `json:"port"`
@@ -22,10 +24,8 @@ type PostgresConfig struct {
 	Name string `json:"name"`
 }
 
-func (pc PostgresConfig) Dialect() string {
-	return "postgres"
-}
-
+// ConnectionInfo returns a PostgresConfig object's values as a string formatted to be
+// passed into a method that opens a database connection.
 func (pc PostgresConfig) ConnectionInfo() string {
 	if pc.Password == "" {
 		return fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", pc.Host, pc.Port, pc.User, pc.Name)
@@ -33,6 +33,7 @@ func (pc PostgresConfig) ConnectionInfo() string {
 	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", pc.Host, pc.Port, pc.User, pc.Password, pc.Name)
 }
 
+// DefaultConfig returns a Config object populated with default dev environment configuration values.
 func DefaultConfig() Config {
 	return Config{
 		Port:    1111,
@@ -43,6 +44,8 @@ func DefaultConfig() Config {
 	}
 }
 
+// DefaultPostgresConfig returns a PostgresConfig object populated with default dev environment
+// database configuration values.
 func DefaultPostgresConfig() PostgresConfig {
 	return PostgresConfig{
 		Host:     "localhost",
@@ -53,6 +56,9 @@ func DefaultPostgresConfig() PostgresConfig {
 	}
 }
 
+// LoadConfig tries to load production configuration data from a .config.json file,
+// decode the data into a Config object and return it. If no config file is found
+// it returns the DefaultConfig data meant for dev environments.
 func LoadConfig() Config {
 	f, err := os.Open(".config.json")
 	if err != nil {

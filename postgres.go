@@ -25,7 +25,7 @@ func NewDB(connectionInfo string) *DB {
 	return db
 }
 
-// Open opens a new database connection.
+// Open opens a new database connection, sets up a logger and executes database migrations.
 func Open(db *DB) (err error) {
 	if db.ConnectionInfo == "" {
 		return fmt.Errorf("connectionInfo required")
