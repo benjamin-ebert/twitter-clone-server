@@ -3,7 +3,6 @@ package main
 import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
-	"wtfTwitter/auth"
 	"wtfTwitter/crud"
 	"wtfTwitter/http"
 )
@@ -23,7 +22,7 @@ func main() {
 
 	// Start app services.
 	// TODO: Refactor this with functional options.
-	userService := auth.NewUserService(db.Gorm, config.HMACKey, config.Pepper)
+	userService := crud.NewUserService(db.Gorm, config.HMACKey, config.Pepper)
 	tweetService := crud.NewTweetService(db.Gorm)
 	followService := crud.NewFollowService(db.Gorm)
 	likeService := crud.NewLikeService(db.Gorm)

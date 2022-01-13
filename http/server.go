@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"wtfTwitter/auth"
 	"wtfTwitter/crud"
 	"wtfTwitter/domain"
 )
@@ -29,7 +28,7 @@ type Server struct {
 // NewServer returns a new instance of the server, registers all necessary
 // routes and gives their handlers access to the app services passed in.
 func NewServer(
-	us *auth.UserService,
+	us *crud.UserService,
 	ts *crud.TweetService,
 	fs *crud.FollowService,
 	ls *crud.LikeService,
