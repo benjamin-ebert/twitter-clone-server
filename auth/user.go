@@ -17,7 +17,9 @@ import (
 	"wtfTwitter/errs"
 )
 
-// UserService manages Users.
+// TODO: Put this whole thing into crud/user.go.
+
+// UserService manages Users. TODO: Make some notes about the auth system here.
 // It implements the domain.UserService interface.
 type UserService struct {
 	userValidator
@@ -221,6 +223,9 @@ func (uv *userValidator) passwordBcrypt(user *domain.User) error {
 
 // passwordHashRequired makes sure that the user's password hash is not the empty string.
 func (uv *userValidator) passwordHashRequired(user *domain.User) error {
+	if user.NoPasswordNeeded == true {
+		return nil
+	}
 	if user.PasswordHash == "" {
 		return errs.Errorf(errs.EINVALID, "A password is required.")
 	}
@@ -240,6 +245,9 @@ func (uv *userValidator) passwordMinLength(user *domain.User) error {
 
 // passwordRequired makes sure that the user's password is not the empty string.
 func (uv *userValidator) passwordRequired(user *domain.User) error {
+	if user.NoPasswordNeeded == true {
+		return nil
+	}
 	if user.Password == "" {
 		return errs.Errorf(errs.EINVALID, "A password is required.")
 	}

@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"net/http"
 	"time"
@@ -15,6 +16,12 @@ const ctxUserKey = "user"
 
 // registerAuthRoutes is a helper for registering all authentication routes.
 func (s *Server) registerAuthRoutes(r *mux.Router) {
+	// Display the login page (and issue a new CSRF token to the client).
+	r.HandleFunc("/login", s.handleLoginPage).Methods("GET")
+
+	// Display the login page (and issue a new CSRF token to the client).
+	r.HandleFunc("/register", s.handleRegisterPage).Methods("GET")
+
 	// Register a new user.
 	r.HandleFunc("/register", s.handleRegister).Methods("POST")
 
@@ -26,9 +33,6 @@ func (s *Server) registerAuthRoutes(r *mux.Router) {
 
 	// View the authed user and his relationships.
 	r.HandleFunc("/profile", s.requireAuth(s.handleProfile)).Methods("GET")
-
-	// Display the home / login page.
-	r.HandleFunc("/home", s.handleHome).Methods("GET")
 }
 
 // handleRegister creates a new user record in the database and signs the user in.
@@ -119,13 +123,11 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	// Add the new cookie to the response.
 	http.SetCookie(w, &cookie)
 
-	// Return a success message.
-	response := make(map[string]string)
-	response["message"] = "Successfully logged out."
-	if err := json.NewEncoder(w).Encode(&response); err != nil {
-		errs.LogError(r, err)
-		return
-	}
+	// Regenerate the client's CSRF token (kill the old one).
+	w.Header().Set("X-CSRF-Token", csrf.Token(r))
+
+	// Redirect to the login page.
+	http.Redirect(w, r, "/login", http.StatusFound)
 }
 
 // handleProfile handles the route "GET /profile".
@@ -159,10 +161,28 @@ func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleHome displays the home / login page.
-func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
+// handleLoginPage displays the login page and issues the client a new CSRF token.
+func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
+	// Generate a new CSRF token, put it in the "X-CSRF-Token" response header and send the
+	// response to the client. The client needs to parse the token from the response header,
+	// and from that point on needs to include it in every subsequent request to the server.
+	// It does that by putting the received token into its "X-CSRF-Token" request header.
+	// The csrf.Protect middleware will validate the token sent by the client against the
+	// value inside their _gorilla_csrf cookie (also set by the middleware). If that
+	// validation fails, the middleware assumes the request to be a csrf attack and blocks it.
+	w.Header().Set("X-CSRF-Token", csrf.Token(r))
 	response := make(map[string]string)
-	response["message"] = "Welcome home."
+	response["message"] = "Welcome back."
+	if err := json.NewEncoder(w).Encode(&response); err != nil {
+		errs.LogError(r, err)
+		return
+	}
+}
+
+func (s *Server) handleRegisterPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("X-CSRF-Token", csrf.Token(r))
+	response := make(map[string]string)
+	response["message"] = "Welcome to this twitter clone. Register now."
 	if err := json.NewEncoder(w).Encode(&response); err != nil {
 		errs.LogError(r, err)
 		return
@@ -190,18 +210,19 @@ func (s *Server) signIn(w http.ResponseWriter, ctx context.Context, user *domain
 		Name:     "remember_token",
 		Value:    user.Remember,
 		HttpOnly: true,
+		Path: "/",
 	}
 	
-	// Add the cookie to the response. From now the remember token is passed back and forth via cookie.
+	// Add the cookie to the response. From now the user is being authenticated by reading
+	// the remember token sent back by their browser.
 	http.SetCookie(w, &cookie)
 
 	// Clear the remember token from the user object in memory for security reasons.
 	// Only the remember token in the cookie and the hashed remember token in the database are left.
-	user.Remember = ""
+	//user.Remember = ""
 
 	return nil
 }
-
 
 // The checkUser middleware reads an incoming request's cookie, checks if its remember token
 // matches a user database record, and on success attaches that user to the request context.
@@ -242,13 +263,13 @@ func (s *Server) checkUser(next http.Handler) http.Handler {
 
 // The requireAuth middleware prevents unauthenticated users from accessing things
 // that require authentication. It does that by trying to read the authenticated user
-// from the request's context. If it fails, it redirects to the home / login page.
+// from the request's context. If it fails, it redirects to the login page.
 // Otherwise, it returns the subsequent authed-users-only handler.
 func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get the authed user from the request's context.
 		if user := s.getUserFromContext(r.Context()); user == nil {
-			http.Redirect(w, r, "/home", http.StatusFound)
+			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
 		// Return the subsequent request handler.

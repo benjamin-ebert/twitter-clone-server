@@ -1,6 +1,8 @@
 package main
 
 import (
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/github"
 	"wtfTwitter/auth"
 	"wtfTwitter/crud"
 	"wtfTwitter/http"
@@ -19,15 +21,34 @@ func main() {
 		panic(err)
 	}
 
-	// Start necessary app services.
+	// Start app services.
+	// TODO: Refactor this with functional options.
 	userService := auth.NewUserService(db.Gorm, config.HMACKey, config.Pepper)
-	twitterService := crud.NewTweetService(db.Gorm)
+	tweetService := crud.NewTweetService(db.Gorm)
 	followService := crud.NewFollowService(db.Gorm)
 	likeService := crud.NewLikeService(db.Gorm)
 	imageService := crud.NewImageService()
+	oauthService := crud.NewOAuthService(db.Gorm)
+	githubOAuth := &oauth2.Config{
+		ClientID:     config.Github.ID,
+		ClientSecret: config.Github.Secret,
+		RedirectURL:  "http://localhost:1111/oauth/github/callback",
+		Endpoint: github.Endpoint,
+		//Endpoint: oauth2.Endpoint{
+		//	AuthURL: config.Github.AuthURL,
+		//	TokenURL: config.Github.TokenURL,
+		//},
+	}
 
 	// Set up a webserver.
-	server := http.NewServer(userService, twitterService, followService, likeService, imageService)
+	server := http.NewServer(
+		userService,
+		tweetService,
+		followService,
+		likeService,
+		imageService,
+		oauthService,
+		*githubOAuth)
 
 	// Serve the app.
 	server.Run(config.Port)

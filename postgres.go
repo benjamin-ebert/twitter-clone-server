@@ -36,11 +36,17 @@ func Open(db *DB) (err error) {
 	if err != nil {
 		return fmt.Errorf("err opening gorm postgres connection: %w", err)
 	}
-	//err = db.Gorm.Migrator().DropTable(domain.User{})
+	//err = db.Gorm.Migrator().DropTable(domain.OAuth{})
 	//if err != nil {
 	//	return err
 	//}
-	if err := db.Gorm.AutoMigrate(domain.User{}, domain.Tweet{}, domain.Follow{}, domain.Like{}); err != nil {
+	if err := db.Gorm.AutoMigrate(
+		domain.User{},
+		domain.Tweet{},
+		domain.Follow{},
+		domain.Like{},
+		domain.OAuth{},
+		); err != nil {
 		return fmt.Errorf("err migrating: %w", err)
 	}
 	return nil

@@ -45,10 +45,14 @@ todo:
   - [ ] report upload progress? https://freshman.tech/file-upload-golang/#report-the-upload-progress
   - [ ] obfuscate location
   - [ ] public file server?
-- [ ] ERROR HANDLING
-- [ ] oauth
-- [ ] seeder ?
+- [x] ERROR HANDLING
+- [x] oauth
+- [x] CSRF
+- [ ] refactor services construction
+- [ ] .json.conf.example
+- [ ] todos in the code comments
 ----
+- [ ] seeder ?
 - [ ] clean up
 - [ ] comment
 - [ ] test 
@@ -57,17 +61,19 @@ todo:
 - [ ] test build
 - [ ] readme
 
-auth:
-- so it's pretty okay as it is now
-- but maybe even better:
-  - folder / package auth, containing:
-    - user.go
-    - http.go
-    - middleware.go
-    - hmac.go
-    - token.go
-  - user needs access to gorm.db, depends on domain/user.go
-  - have an authservice start up in main?
-  - server needs the authservice?
-  - server would then just pull in the auth routes from auth/http
-  - and the middleware from auth/middleware
+auth better in this project:
+- auth/user.go to crud/user.go
+- http/auth.go and separate http/oauth.go
+- 
+future auth system:
+- user model has only id, email and timestamps (and name maybe)
+- auth model has password, password hash, remember and remember hash
+- oauth model has the oauth stuff
+- user-auth 1:1
+- user-oauth 1:n
+- separate http and crud service stuff for each
+- user crud is doing email validation
+- auth crud is doing all the string and hashing crap, and password and remember validation
+- auth http is doing all the middleware and cookie crap
+- user and oauth hook into auth, just like now
+- separating user crud and auth crud is probably tricky but doable

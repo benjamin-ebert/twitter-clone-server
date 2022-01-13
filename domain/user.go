@@ -20,7 +20,7 @@ import (
 type User struct {
 	ID int `json:"id"`
 	Name string `json:"name"`
-	Email string `json:"email"`
+	Email string `json:"email"` // TODO: Make this unique index.
 	Avatar string `json:"avatar"`
 	Header string `json:"header"`
 
@@ -28,7 +28,9 @@ type User struct {
 	PasswordHash string `json:"password_hash"`
 	Remember string `json:"remember" gorm:"-"`
 	RememberHash string `json:"remember_hash"`
+	NoPasswordNeeded bool `json:"no_password_needed" gorm:"-"` // TODO: Explain this here, not in http/oauth?
 
+	OAuths []OAuth `json:"o_auths" gorm:"foreignKey:UserID"`
 	Tweets []Tweet `json:"tweets" gorm:"foreignKey:UserID"`
 	Likes []Like `json:"likes" gorm:"foreignKey:UserID"`
 	Followers []Follow `json:"followers" gorm:"foreignKey:FollowedID"`

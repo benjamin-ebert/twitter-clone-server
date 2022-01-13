@@ -13,6 +13,7 @@ type Config struct {
 	Pepper string `json:"pepper"`
 	HMACKey string `json:"hmac_key"`
 	Database PostgresConfig `json:"database"`
+	Github OAuthConfig `json:"github"`
 }
 
 // PostgresConfig represents configurations needed to connect to a postgres database.
@@ -54,6 +55,15 @@ func DefaultPostgresConfig() PostgresConfig {
 		Password: "",
 		Name:     "wtf_twitter",
 	}
+}
+
+// OAuthConfig is a template to hold provider-specific OAuth configuration.
+// The actual credentials for each OAuth provider are in .conf.json.
+type OAuthConfig struct {
+	ID string `json:"id"`
+	Secret string `json:"secret"`
+	AuthURL string `json:"auth_url"`
+	TokenURL string `json:"token_url"`
 }
 
 // LoadConfig tries to load production configuration data from a .config.json file,

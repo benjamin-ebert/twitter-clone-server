@@ -116,10 +116,20 @@ func ErrorStatusCode(code string) int {
 // to the operator. If they are returned, the user sees code 500 and "Internal error", and
 // the actual message gets printed to the log.
 const (
+	// UserIDRequired is returned when there is an attempt to create a record in a table
+	// that requires the foreign key user_id, without providing a user_id.
+	// TODO: Do this in probably all models on create.
+	UserIDRequired privateError = "CRUD: a user_id is required."
+	// ProviderRequired is returned when there is an attempt to create a new oauth record
+	// without providing the name of the provider
+	ProviderRequired privateError = "OAUTH: the name of the provider is required."
+	// ProviderUserIdRequired is returned if the oauth provider did not return id of the user
+	// in their system, after the user granted account access.
+	ProviderUserIdRequired privateError = "OAUTH: the id of the user in the provider's system is required."
 	// RememberHashEmpty is returned when a user-create or -update is attempted without a remember token hash.
-	RememberHashEmpty privateError = "auth: the user's remember hash is an empty string."
+	RememberHashEmpty privateError = "AUTH: the user's remember hash is an empty string."
 	// RememberTooShort is returned when a remember token is shorter than 32 bytes.
-	RememberTooShort privateError = "auth: the user's remember token must be at least 32 bytes."
+	RememberTooShort privateError = "AUTH: the user's remember token must be at least 32 bytes."
 )
 
 type privateError string
