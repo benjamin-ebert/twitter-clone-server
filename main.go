@@ -9,46 +9,50 @@ import (
 
 // main is the app's entry point.
 func main() {
+	// TODO: Do the flag shit.
+
 	// Load configuration (from a .config.json file if present, otherwise use default dev setup).
 	config := LoadConfig()
-	dbConfig := config.Database
 
 	// Open a database connection.
+	dbConfig := config.Database
 	db := NewDB(dbConfig.ConnectionInfo())
-	err := Open(db)
-	if err != nil {
-		panic(err)
-	}
+	err := Open(db, config.IsProd())
+	must(err)
+	defer Close(db)
+	err = AutoMigrate(db)
+	must(err)
 
 	// Start app services.
-	// TODO: Refactor this with functional options.
-	userService := crud.NewUserService(db.Gorm, config.HMACKey, config.Pepper)
-	tweetService := crud.NewTweetService(db.Gorm)
-	followService := crud.NewFollowService(db.Gorm)
-	likeService := crud.NewLikeService(db.Gorm)
-	imageService := crud.NewImageService()
-	oauthService := crud.NewOAuthService(db.Gorm)
+	services, err := crud.NewServices(
+		db.Gorm,
+		crud.WithUser(config.Pepper, config.HMACKey),
+		crud.WithOAuth(),
+		crud.WithTweet(),
+		crud.WithFollow(),
+		crud.WithLike(),
+		crud.WithImage(),
+	)
+	must(err)
+
+	// Create an oauth config for Github.
 	githubOAuth := &oauth2.Config{
 		ClientID:     config.Github.ID,
 		ClientSecret: config.Github.Secret,
-		RedirectURL:  "http://localhost:1111/oauth/github/callback",
+		RedirectURL:  config.Github.RedirectURL,
 		Endpoint: github.Endpoint,
-		//Endpoint: oauth2.Endpoint{
-		//	AuthURL: config.Github.AuthURL,
-		//	TokenURL: config.Github.TokenURL,
-		//},
 	}
 
 	// Set up a webserver.
-	server := http.NewServer(
-		userService,
-		tweetService,
-		followService,
-		likeService,
-		imageService,
-		oauthService,
-		*githubOAuth)
+	server := http.NewServer(config.IsProd(), githubOAuth, services)
 
 	// Serve the app.
 	server.Run(config.Port)
+}
+
+// must is a little helper for shortening the panic instruction.
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

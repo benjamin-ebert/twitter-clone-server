@@ -16,6 +16,12 @@ type Config struct {
 	Github OAuthConfig `json:"github"`
 }
 
+// IsProd determines if we're in a production environment or not. The resulting boolean is used
+// throughout the app, for example to configure database logging, or to set up csrf middleware.
+func (c Config) IsProd() bool {
+	return c.Env == "prod"
+}
+
 // PostgresConfig represents configurations needed to connect to a postgres database.
 type PostgresConfig struct {
 	Host string `json:"host"`
@@ -62,6 +68,7 @@ func DefaultPostgresConfig() PostgresConfig {
 type OAuthConfig struct {
 	ID string `json:"id"`
 	Secret string `json:"secret"`
+	RedirectURL string `json:"redirect_url"`
 	AuthURL string `json:"auth_url"`
 	TokenURL string `json:"token_url"`
 }

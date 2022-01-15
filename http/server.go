@@ -1,6 +1,7 @@
 package http
 
 import (
+	"crypto/rand"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"golang.org/x/oauth2"
@@ -11,42 +12,43 @@ import (
 	"wtfTwitter/domain"
 )
 
-// Server provides most of the http functionality of this app, namely routing,
-// request handling, and middleware. It also performs authentication and
-// authorization before handing things over to one of the database services.
+// Server provides routing, request handling and middleware. It contains all the route
+// declarations and their respective handler functions. It also performs authentication
+// and authorization before calling one of the crud services to do some actual work.
 type Server struct {
+	isProd bool
 	router *mux.Router
+	github *oauth2.Config
+	// A single field for every service isn't necessary here, since the services could be
+	// accessed through the passed in crud.Services object like so: s.service.User.Create(...).
+	// However, having those single fields nicely shortens the call: s.us.Create(...).
 	us domain.UserService
+	os domain.OAuthService
 	ts domain.TweetService
 	fs domain.FollowService
 	ls domain.LikeService
 	is domain.ImageService
-	os domain.OAuthService
-	github oauth2.Config
 }
 
 // NewServer returns a new instance of the server, registers all necessary
-// routes and gives their handlers access to the app services passed in.
+// routes and gives their handlers access to the crud services passed in.
 func NewServer(
-	us *crud.UserService,
-	ts *crud.TweetService,
-	fs *crud.FollowService,
-	ls *crud.LikeService,
-	is *crud.ImageService,
-	os *crud.OAuthService,
-	github oauth2.Config,
+	isProd bool,
+	github *oauth2.Config,
+	services *crud.Services,
 	) *Server {
 
 	// Construct a new Server with a gorilla router and the services passed in.
 	s := &Server{
-		router: mux.NewRouter(),
-		us: us,
-		ts: ts,
-		fs: fs,
-		ls: ls,
-		is: is,
-		os: os,
+		isProd: isProd,
 		github: github,
+		us: services.User,
+		os: services.OAuth,
+		ts: services.Tweet,
+		fs: services.Follow,
+		ls: services.Like,
+		is: services.Image,
+		router: mux.NewRouter(),
 	}
 
 	// Register routes of the auth system.
@@ -59,13 +61,18 @@ func NewServer(
 	s.registerLikeRoutes(s.router)
 	s.registerImageRoutes(s.router)
 
-	// Set up middleware that needs to run on every request.
-	// TODO: Put the csrf auth key into config.
-	// TODO: Set secure value depending on a config production variable.
 	// Construct the CSRF protection middleware. A new CSRF tokens is issued when the client requests
 	// /register or /login with a GET request (they visit the register- or the login-page).
-	csrfMw := csrf.Protect([]byte("32-byte-long-auth-key"), csrf.Secure(false), csrf.Path("/"))
+	csrfAuthKey := make([]byte, 32)
+	if _, err := rand.Read(csrfAuthKey); err != nil {
+		panic(err)
+	}
+	csrfMw := csrf.Protect(csrfAuthKey, csrf.Secure(s.isProd), csrf.Path("/"))
+
+	// Set up middleware that needs to run on every request.
 	s.router.Use(csrfMw, setContentTypeJSON, s.checkUser)
+
+	// Return the pointer to the Server object.
 	return s
 }
 

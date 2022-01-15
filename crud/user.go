@@ -17,10 +17,10 @@ import (
 	"wtfTwitter/errs"
 )
 
-// TODO: Put this whole thing into crud/user.go.
-
-// UserService manages Users. TODO: Make some notes about the auth system here.
-// It implements the domain.UserService interface.
+// UserService manages Users. It also contains the part of the authentication system
+// that handles database interactions and token creation / hashing. It's basically
+// the "backend" of the auth system, with http/auth.go dealing with requests, middleware
+// and cookies being the "frontend". It implements the domain.UserService interface.
 type UserService struct {
 	userValidator
 }
@@ -46,7 +46,7 @@ type userGorm struct {
 func NewUserService(db *gorm.DB, hmacKey, pepper string) *UserService {
 	return &UserService{
 		userValidator{
-			hmac:     NewHMAC(hmacKey),
+			hmac:     newHMAC(hmacKey),
 			pepper:   pepper,
 			emailRegex: regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
 			userGorm: userGorm{
@@ -89,7 +89,7 @@ func (uv *userValidator) Authenticate(email, password string) (*domain.User, err
 
 // MakeRememberToken is helper to generate remember tokens of a predetermined byte size.
 func (uv *userValidator) MakeRememberToken() (string, error) {
-	return String(RememberTokenBytes)
+	return bytesToString(RememberTokenBytes)
 }
 
 // ByRemember runs validations / normalizations on a user's remember token. It then passes
@@ -267,7 +267,7 @@ func (uv *userValidator) rememberHmac(user *domain.User) error {
 	if user.Remember == "" {
 		return nil
 	}
-	user.RememberHash = uv.hmac.Hash(user.Remember)
+	user.RememberHash = uv.hmac.hash(user.Remember)
 	return nil
 }
 
@@ -276,7 +276,7 @@ func (uv *userValidator) rememberMinBytes(user *domain.User) error {
 	if user.Remember == "" {
 		return nil
 	}
-	n, err := NBytes(user.Remember)
+	n, err := nBytes(user.Remember)
 	if err != nil {
 		return err
 	}
@@ -363,17 +363,17 @@ type HMAC struct {
 	hmac hash.Hash
 }
 
-// NewHMAC creates and returns a new HMAC object.
-func NewHMAC(key string) HMAC {
+// newHMAC creates and returns a new HMAC object.
+func newHMAC(key string) HMAC {
 	h := hmac.New(sha256.New, []byte(key))
 	return HMAC{
 		hmac: h,
 	}
 }
 
-// Hash hashes an input string using HMAC with the secret key
+// hash hashes an input string using HMAC with the secret key
 // provided when the HMAC object was created in NewUserService.
-func (h HMAC) Hash(input string) string {
+func (h HMAC) hash(input string) string {
 	h.hmac.Reset()
 	h.hmac.Write([]byte(input))
 	b := h.hmac.Sum(nil)
@@ -382,9 +382,9 @@ func (h HMAC) Hash(input string) string {
 
 const RememberTokenBytes = 32
 
-// Bytes generates n random bytes or returns an error. It uses the
+// bytes generates n random bytes or returns an error. It uses the
 // crypto/rand package, so it can be used for things like remember tokens.
-func Bytes(n int) ([]byte, error) {
+func bytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -393,8 +393,8 @@ func Bytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-// NBytes returns the number of bytes used in a base64 URL encoded string.
-func NBytes(base64String string) (int, error) {
+// nBytes returns the number of bytes used in a base64 URL encoded string.
+func nBytes(base64String string) (int, error) {
 	b, err := base64.URLEncoding.DecodeString(base64String)
 	if err != nil {
 		return -1, err
@@ -404,8 +404,8 @@ func NBytes(base64String string) (int, error) {
 
 // String generates a byte slice of size nBytes and then returns a
 // string that is the base64 URL encoded version of that byte slice.
-func String(nBytes int) (string, error) {
-	b, err := Bytes(nBytes)
+func bytesToString(nBytes int) (string, error) {
+	b, err := bytes(nBytes)
 	if err != nil {
 		return "", err
 	}

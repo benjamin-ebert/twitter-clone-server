@@ -48,7 +48,7 @@ todo:
 - [x] ERROR HANDLING
 - [x] oauth
 - [x] CSRF
-- [ ] refactor services construction
+- [x] refactor services construction
 - [ ] .json.conf.example
 - [ ] todos in the code comments
 ----
