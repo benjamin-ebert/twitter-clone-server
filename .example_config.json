@@ -1,0 +1,22 @@
+{
+  "port": 1111,
+  "env": "dev",
+  "pepper": "secret-random-string",
+  "hmac_key": "secret-hmac-key",
+
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "user": "postgres",
+    "password": "",
+    "name": "wtf_twitter"
+  },
+
+  "github": {
+    "id": "The id string github gave you after setting up a new oauth app in your account.",
+    "secret": "The secret string github gave you after setting up a new oauth app in your account.",
+    "redirect_url": "The url of your app that github should redirect the user to, after they authorized their github account.",
+    "auth_url": "https://github.com/login/oauth/authorize",
+    "token_url": "https://github.com/login/oauth/access_token"
+  }
+}

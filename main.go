@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
 	"wtfTwitter/crud"
@@ -10,11 +11,16 @@ import (
 // main is the app's entry point.
 func main() {
 	// TODO: Do the flag shit.
+	// Check if the flag "-prod" to has been provided. It indicates that we're running in production.
+	productionBool := flag.Bool("prod", false, "Provide this flag in production to ensure that a .config.json file is provided before the application starts.")
+	flag.Parse()
 
-	// Load configuration (from a .config.json file if present, otherwise use default dev setup).
-	config := LoadConfig()
+	// Load configuration from a .config.json file if present, otherwise use the default dev setup.
+	// If *productionBool evaluates to true, that means we're in production. In that case the
+	// .config.json file is required and the app will panic if no file is found.
+	config := LoadConfig(*productionBool)
 
-	// Open a database connection.
+	// Open a database connection and execute migrations.
 	dbConfig := config.Database
 	db := NewDB(dbConfig.ConnectionInfo())
 	err := Open(db, config.IsProd())
@@ -23,7 +29,7 @@ func main() {
 	err = AutoMigrate(db)
 	must(err)
 
-	// Start app services.
+	// Start the crud services.
 	services, err := crud.NewServices(
 		db.Gorm,
 		crud.WithUser(config.Pepper, config.HMACKey),
@@ -35,7 +41,7 @@ func main() {
 	)
 	must(err)
 
-	// Create an oauth config for Github.
+	// Create an oauth config object for doing oauth with Github.
 	githubOAuth := &oauth2.Config{
 		ClientID:     config.Github.ID,
 		ClientSecret: config.Github.Secret,

@@ -76,9 +76,13 @@ type OAuthConfig struct {
 // LoadConfig tries to load production configuration data from a .config.json file,
 // decode the data into a Config object and return it. If no config file is found
 // it returns the DefaultConfig data meant for dev environments.
-func LoadConfig() Config {
+func LoadConfig(configFileRequired bool) Config {
 	f, err := os.Open(".config.json")
 	if err != nil {
+		if configFileRequired {
+			panic(err)
+		}
+		fmt.Println("Using the default config...")
 		return DefaultConfig()
 	}
 	var c Config
