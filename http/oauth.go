@@ -20,17 +20,21 @@ const cookieOAuthState = "oauth_state"
 
 // registerOAuthRoutes is a helper for registering all oauth routes.
 func (s *Server) registerOAuthRoutes(r *mux.Router) {
-	// TODO: Add comments to these two.
+	// Set a user up for authentication with Github.
 	r.HandleFunc("/oauth/github/connect", s.handleOAuthGithub).Methods("GET")
 
+	// Handle the user coming back from Github. Finish the oauth authentication process.
 	r.HandleFunc("/oauth/github/callback", s.handleOAuthGithubCallback).Methods("GET")
 }
 
+// handleOAuthGithub handles the route "GET /oauth/github/connect".
+// It creates a state token, gives it to the user via cookie and sends them over to
+// Github, where they can authorize this app to access their Github account.
 func (s *Server) handleOAuthGithub(w http.ResponseWriter, r *http.Request) {
 	// Generate a CSRF token called "state".
 	state := csrf.Token(r)
 
-	// Put it into a cookie, so I can verify it's the same when the user comes back.
+	// Put it into a cookie, so we can verify it's the same when the user comes back.
 	cookie := http.Cookie{
 		Name: cookieOAuthState,
 		Value: state,
@@ -47,6 +51,12 @@ func (s *Server) handleOAuthGithub(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusFound)
 }
 
+// handleOAuthGithubCallback handles the route "GET /oauth/github/callback".
+// After authorization at Github, the user gets redirected here. Github will attach
+// multiple parameters to this url. This method parses those parameters, verifies
+// the state from the user's state cookie, creates an oauth object, determines what
+// to do with it, and identifies an existing user or creates a new one in our database.
+// On success, it signs them in through the regular auth system (remember token + cookie).
 func (s *Server) handleOAuthGithubCallback(w http.ResponseWriter, r *http.Request) {
 	// By now the user has been over at Github and authorized our app's access to
 	// their Github account. Github then sends them back here, to the callback
