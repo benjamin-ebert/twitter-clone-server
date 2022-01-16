@@ -16,8 +16,8 @@ import (
 // - A one-to-many rel. with images, since up to 4 images can be attached to a Tweet.
 type Tweet struct {
 	ID int `json:"id"`
+	UserID int `json:"user_id" gorm:"notNull;index"`
 	Content string `json:"content"`
-	UserID int `json:"user_id"` // TODO: add non null to this and other models. (Fix gorm defs in general)
 
 	RepliesToID int `json:"replies_to_id,omitempty" gorm:"default:null"`
 	Replies []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`
@@ -28,7 +28,7 @@ type Tweet struct {
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
 // TweetService is a set of methods to manipulate and work with the Tweet model.

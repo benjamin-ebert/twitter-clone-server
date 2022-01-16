@@ -8,9 +8,9 @@ import "time"
 // user that is being followed. In the database Follows are stored within the follows-table.
 type Follow struct {
 	ID int `json:"id"`
-	FollowerID int `json:"-"`
+	FollowerID int `json:"-" gorm:"notNull;index"`
 	Follower User `json:"follower"`
-	FollowedID int `json:"-"`
+	FollowedID int `json:"-" gorm:"notNull;index"`
 	Followed User `json:"followed"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

@@ -44,7 +44,6 @@ func NewTweetService(db *gorm.DB) *TweetService {
 var _ domain.TweetService = &TweetService{}
 
 // Create runs validations needed for creating new Tweet database records.
-// TODO: Return the full retweeted / replied to tweet in JSON response, not just the foreign id?
 func (tv *tweetValidator) Create(tweet *domain.Tweet) error {
 	err := runTweetValFns(tweet,
 		tv.userIdValid,

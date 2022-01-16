@@ -16,7 +16,7 @@ import (
 // initial soft-deletion would be a possible solution.
 type Like struct {
 	ID int `json:"id"`
-	UserID int `json:"user_id"`
+	UserID int `json:"user_id" gorm:"notNull;index"`
 	TweetID int `json:"-"`
 	Tweet Tweet `json:"tweet"`
 	CreatedAt time.Time `json:"created_at"`

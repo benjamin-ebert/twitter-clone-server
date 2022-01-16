@@ -12,9 +12,9 @@ type OAuth struct {
 	// UserID and Provider share the same database index to ensure the pair is unique,
 	// since every user should be able to use every provider, but only have one
 	// associated oauth record per provider.
-	// ProviderUserID is the ID of the user in the provider's database.
 	Provider string `json:"provider" gorm:"notNull;uniqueIndex:user_id_provider"`
-	ProviderUserID string `json:"provider_user_id"`
+	// ProviderUserID is a unique identifier of the user in the provider's system.
+	ProviderUserID string `json:"provider_user_id" gorm:"index"`
 
 	// OAuth token fields. If a provider issues an access token that never expires,
 	// Expiry will be a nonsense date and RefreshToken will be empty.
