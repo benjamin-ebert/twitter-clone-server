@@ -2,23 +2,31 @@ package crud
 
 import (
 	"gorm.io/gorm"
-	"time"
 	"wtfTwitter/domain"
 	"wtfTwitter/errs"
 )
 
+// OAuthService manages oauth records.
+// It implements the domain.OAuthService interface.
 type OAuthService struct {
 	oauthValidator
 }
 
+// oauthValidator runs validations on incoming OAuth data.
+// On success, it passes the data on to oauthGorm.
+// Otherwise, it returns the error of the validation that has failed.
 type oauthValidator struct {
 	oauthGorm
 }
 
+// oauthGorm runs CRUD operations on the database using incoming OAuth data.
+// It assumes that data has been validated. On success, it returns nil.
+// Otherwise, it returns the error of the operation that has failed.
 type oauthGorm struct {
 	db *gorm.DB
 }
 
+// NewOAuthService returns an instance of OAuthService.
 func NewOAuthService(db *gorm.DB) *OAuthService {
 	return &OAuthService{
 		oauthValidator{
@@ -29,12 +37,11 @@ func NewOAuthService(db *gorm.DB) *OAuthService {
 	}
 }
 
+// Ensure the OAuthService struct properly implements the domain.OAuthService interface.
+// If it does not, then this expression becomes invalid and won't compile.
 var _ domain.OAuthService = &OAuthService{}
 
-func (ov *oauthValidator) Find(userId int, provider string) (*domain.OAuth, error) {
-	return ov.oauthGorm.Find(userId, provider)
-}
-
+// Create runs validations needed for creating new OAuth database records.
 func (ov *oauthValidator) Create(oauth *domain.OAuth) error {
 	err := runOAuthValFns(oauth,
 		ov.userIdRequired,
@@ -46,12 +53,17 @@ func (ov *oauthValidator) Create(oauth *domain.OAuth) error {
 	return ov.oauthGorm.Create(oauth)
 }
 
-func (ov *oauthValidator) Delete(oauth *domain.OAuth) error {
-	err := runOAuthValFns(oauth, ov.idValid)
+// Update runs validations needed for updating new OAuth database records.
+func (ov *oauthValidator) Update(oauth *domain.OAuth) error {
+	err := runOAuthValFns(oauth,
+		ov.idValid,
+		ov.userIdRequired,
+		ov.providerRequired,
+		ov.providerUserIdRequired)
 	if err != nil {
 		return err
 	}
-	return ov.oauthGorm.Delete(oauth)
+	return ov.oauthGorm.Update(oauth)
 }
 
 // runOAuthValFns runs any number of functions of type oauthValFn on the passed in OAuth object.
@@ -68,14 +80,16 @@ func runOAuthValFns(oauth *domain.OAuth, fns ...oauthValFn) error {
 // A oauthValFn is any function that takes in a pointer to a domain.OAuth object and returns an error.
 type oauthValFn = func(oauth *domain.OAuth) error
 
-// idValid makes sure that the passed in ID of a OAuth to be deleted is greater than 0.
+// idValid ensures that the passed in ID of a OAuth to be updated is greater than 0.
 func (ov *oauthValidator) idValid(oauth *domain.OAuth) error {
 	if oauth.ID <= 0 {
-		return errs.Errorf(errs.EINVALID, "OAuth ID is invalid.")
+		// TODO: Do it like that on all models..better keep that error private.
+		return errs.IdInvalid
 	}
 	return nil
 }
 
+// providerRequired ensures that the name of a provider is not empty.
 func (ov *oauthValidator) providerRequired(oauth *domain.OAuth) error {
 	if oauth.Provider == "" {
 		return errs.ProviderRequired
@@ -83,6 +97,8 @@ func (ov *oauthValidator) providerRequired(oauth *domain.OAuth) error {
 	return nil
 }
 
+// providerUserIdRequired ensures that the user's unique identifier from the provider's system
+// is not empty.
 func (ov *oauthValidator) providerUserIdRequired(oauth *domain.OAuth) error {
 	if oauth.ProviderUserID == "" {
 		return errs.ProviderUserIdRequired
@@ -90,6 +106,7 @@ func (ov *oauthValidator) providerUserIdRequired(oauth *domain.OAuth) error {
 	return nil
 }
 
+// userIdRequired ensures that the userId is not empty.
 func (ov *oauthValidator) userIdRequired(oauth *domain.OAuth) error {
 	if oauth.UserID <= 0 {
 		return errs.UserIDRequired
@@ -97,6 +114,10 @@ func (ov *oauthValidator) userIdRequired(oauth *domain.OAuth) error {
 	return nil
 }
 
+// Find takes a user id and the name of an oauth provider, looks for an oauth record with that
+// data, and returns a pointer to an oauth object. It's used to check if a given user has
+// previously signed in with a specific provider. Every user has only one associated oauth
+// record per provider (only one Github record, one Google record, one Facebook record etc.)
 func (og *oauthGorm) Find(userId int, provider string) (*domain.OAuth, error) {
 	var oauth domain.OAuth
 	err := og.db.
@@ -109,6 +130,13 @@ func (og *oauthGorm) Find(userId int, provider string) (*domain.OAuth, error) {
 	return &oauth, nil
 }
 
+// ByProviderUserId takes the name of an oauth provider and a unique identifier of a user in
+// a provider's system. The identifier is sent by an oauth provider after a user authorized
+// this app's access on their provider profile. It's used to check if someone with that identifier
+// on that provider has previously signed in here, which is true if an oauth record with that
+// data exists. Usually, the record's user_id is then used to identify the user in our database.
+// It returns a pointer to an oauth object or an error.
+// TODO: Remove ByProviderUserId and handle the case with Find and functional options?
 func (og *oauthGorm) ByProviderUserId(provider, providerUserId string) (*domain.OAuth, error) {
 	var oauth domain.OAuth
 	err := og.db.
@@ -121,21 +149,15 @@ func (og *oauthGorm) ByProviderUserId(provider, providerUserId string) (*domain.
 	return &oauth, nil
 }
 
-func (og *oauthGorm) update(existing *domain.OAuth, accessT, refreshT string, expiry time.Time) (*domain.OAuth, error) {
-	return nil, nil
-}
-
+// Create stores the data from the OAuth object in a new database record.
 func (og *oauthGorm) Create(oauth *domain.OAuth) error {
 	return og.db.Create(oauth).Error
 }
 
+// Update saves changes to an existing oauth record in the database.
+// It's used to renew an existing user's existing oauth token data, when they sign in
+// with a provider that they've already used in the past. Needed because some providers
+// issue oauth tokens that expire after some time.
 func (og *oauthGorm) Update(oauth *domain.OAuth) error {
 	return og.db.Save(oauth).Error
-}
-
-// Delete permanently deletes the database record matching the data from the OAuth object.
-// TODO: So far I don't even need this, since oauths are only either created or updated.
-func (og *oauthGorm) Delete(oauth *domain.OAuth) error {
-	// TODO: If this works, do it like that on all models.
-	return og.db.Delete(oauth).Error
 }

@@ -34,5 +34,4 @@ type OAuthService interface {
 	ByProviderUserId(provider, providerUserId string) (*OAuth, error)
 	Create(oauth *OAuth) error
 	Update(oauth *OAuth) error
-	Delete(id *OAuth) error
 }

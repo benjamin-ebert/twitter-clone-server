@@ -20,7 +20,7 @@ const cookieOAuthState = "oauth_state"
 
 // registerOAuthRoutes is a helper for registering all oauth routes.
 func (s *Server) registerOAuthRoutes(r *mux.Router) {
-
+	// TODO: Add comments to these two.
 	r.HandleFunc("/oauth/github/connect", s.handleOAuthGithub).Methods("GET")
 
 	r.HandleFunc("/oauth/github/callback", s.handleOAuthGithubCallback).Methods("GET")
@@ -48,8 +48,8 @@ func (s *Server) handleOAuthGithub(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleOAuthGithubCallback(w http.ResponseWriter, r *http.Request) {
-	// By now the user has been over at Github and confirmed to them that our app
-	// may access their account. Github then sends them back here, to the callback
+	// By now the user has been over at Github and authorized our app's access to
+	// their Github account. Github then sends them back here, to the callback
 	// route /oauth/github/callback, and attaches a bunch of url parameters to it.
 	// Parse those url parameters first.
 	if err := r.ParseForm(); err != nil {
@@ -57,7 +57,7 @@ func (s *Server) handleOAuthGithubCallback(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Extract the state sent back by Github.
+	// Extract the state parameter sent back by Github.
 	state := r.FormValue("state")
 
 	// Get the state from the user's cookie.
@@ -134,7 +134,8 @@ func (s *Server) handleOAuthGithubCallback(w http.ResponseWriter, r *http.Reques
 		oauth.Expiry = token.Expiry
 	}
 
-	// TODO: Write a useful comment for this.
+	// Take the oauth object, find or create an associated user for it,
+	// and sign that user in through the regular auth system.
 	if err := s.oauthSignIn(w, r, oauth); err != nil {
 		errs.ReturnError(w, r, err)
 		return
@@ -145,6 +146,19 @@ func (s *Server) handleOAuthGithubCallback(w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, "/profile", http.StatusFound)
 }
 
+// oauthSignIn takes in a pointer to an oauth object, finds or creates an associated
+// user for it, and signs that user in through the regular auth system. How it works:
+// 1. First check if an oauth record with that provider_user_id and that provider exists.
+// If yes, we have a user in our database who has previously signed in with Github.
+// Update their Github oauth record with the new token and sign the user in.
+// 2. If such an oauth record doesn't exist, the user either didn't sign in with Github
+// before, or they don't exist in our database at all. Look for a user with the email
+// from the oauth object to find out.
+// 3. If such a user exists, they haven't signed in with Github before. Create a new
+// oauth record and associate it with the user. Then sign them in.
+// 4. If such a user doesn't exit, this is a new account registration. Create a new
+// user record and a new Github oauth record, and associate them with each other.
+// Then sign the user in.
 func (s *Server) oauthSignIn(w http.ResponseWriter, r *http.Request, oauth *domain.OAuth) error {
 	// The user who will eventually be signed in with the oauth.
 	var authedUser *domain.User
@@ -234,7 +248,7 @@ func (s *Server) oauthSignIn(w http.ResponseWriter, r *http.Request, oauth *doma
 	// Because the user is being signed in with oauth, not with email and password,
 	// their Password field will be empty. That would normally cause the password
 	// validations to fail. NoPasswordNeeded set to true will make them pass.
-	// The field is not stored in the user's database record.
+	// The field is never stored in the user's database record.
 	// It's set back to false after successful signIn.
 	if authedUser != nil {
 		authedUser.NoPasswordNeeded = true
@@ -242,7 +256,7 @@ func (s *Server) oauthSignIn(w http.ResponseWriter, r *http.Request, oauth *doma
 		if err != nil {
 			return err
 		}
-		authedUser.NoPasswordNeeded = false // TODO: Is this right and necessary?
+		authedUser.NoPasswordNeeded = false
 	} else {
 		return errs.Errorf(errs.EINVALID, "Failed to sign you in with that method. Please try a different one.")
 	}

@@ -49,7 +49,7 @@ todo:
 - [x] oauth
 - [x] CSRF
 - [x] refactor services construction
-- [ ] .json.conf.example
+- [x] .json.conf.example
 - [ ] todos in the code comments
 ----
 - [ ] seeder ?

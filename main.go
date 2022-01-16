@@ -10,8 +10,7 @@ import (
 
 // main is the app's entry point.
 func main() {
-	// TODO: Do the flag shit.
-	// Check if the flag "-prod" to has been provided. It indicates that we're running in production.
+	// Check if the flag "-prod" to has been provided. It means that we're running in production.
 	productionBool := flag.Bool("prod", false, "Provide this flag in production to ensure that a .config.json file is provided before the application starts.")
 	flag.Parse()
 

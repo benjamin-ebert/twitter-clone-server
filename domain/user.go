@@ -20,15 +20,19 @@ import (
 type User struct {
 	ID int `json:"id"`
 	Name string `json:"name"`
-	Email string `json:"email"` // TODO: Make this unique index.
+	Email string `json:"email" gorm:"notNull;uniqueIndex"`
 	Avatar string `json:"avatar"`
 	Header string `json:"header"`
 
 	Password string `json:"password" gorm:"-"`
 	PasswordHash string `json:"password_hash"`
 	Remember string `json:"remember" gorm:"-"`
-	RememberHash string `json:"remember_hash"`
-	NoPasswordNeeded bool `json:"no_password_needed" gorm:"-"` // TODO: Explain this here, not in http/oauth?
+	RememberHash string `json:"remember_hash" gorm:"notNull;uniqueIndex"`
+
+	// If NoPasswordNeeded ist true on a User object, the database record
+	// can be created / updated without a password or password hash.
+	// It's set to true when a user signs in using oauth.
+	NoPasswordNeeded bool `json:"no_password_needed" gorm:"-"`
 
 	OAuths []OAuth `json:"o_auths" gorm:"foreignKey:UserID"`
 	Tweets []Tweet `json:"tweets" gorm:"foreignKey:UserID"`

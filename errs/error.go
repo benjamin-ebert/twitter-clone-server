@@ -116,6 +116,7 @@ func ErrorStatusCode(code string) int {
 // to the operator. If they are returned, the user sees code 500 and "Internal error", and
 // the actual message gets printed to the log.
 const (
+	IdInvalid privateError = "CRUD: The model's id is invalid."
 	// UserIDRequired is returned when there is an attempt to create a record in a table
 	// that requires the foreign key user_id, without providing a user_id.
 	// TODO: Do this in probably all models on create.
