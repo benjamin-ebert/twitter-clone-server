@@ -50,11 +50,11 @@ todo:
 - [x] CSRF
 - [x] refactor services construction
 - [x] .json.conf.example
-- [ ] todos in the code comments
+- [x] todos in the code comments
 ----
 - [ ] seeder ?
-- [ ] clean up
-- [ ] comment
+- [x] clean up
+- [x] comment
 - [ ] test 
 - [ ] deploy
 - [ ] push
