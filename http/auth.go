@@ -89,6 +89,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Clear the user object's Remember field, so the remember token doesn't show in the json response.
+	authedUser.Remember = ""
+
 	// Return the logged-in user.
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(&authedUser); err != nil {
