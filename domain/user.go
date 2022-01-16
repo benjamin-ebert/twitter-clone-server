@@ -26,7 +26,7 @@ type User struct {
 
 	Password string `json:"password" gorm:"-"`
 	PasswordHash string `json:"password_hash"`
-	Remember string `json:"remember" gorm:"-"`
+	Remember string `json:"remember" gorm:"-"` // TODO: This gets returned in JSON after login. Don't.
 	RememberHash string `json:"remember_hash" gorm:"notNull;uniqueIndex"`
 
 	// If NoPasswordNeeded ist true on a User object, the database record

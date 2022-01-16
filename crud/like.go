@@ -44,6 +44,7 @@ var _ domain.LikeService = &LikeService{}
 // Create runs validations needed for creating new Like database records.
 func (lv *likeValidator) Create(like *domain.Like) error {
 	err := runLikeValFns(like,
+		lv.userIdValid,
 		lv.likedTweetExists,
 		lv.notAlreadyLiked)
 	if err != nil {
@@ -108,6 +109,14 @@ func (lv *likeValidator) notAlreadyLiked(like *domain.Like) error {
 		return errs.Errorf(errs.EINVALID, "You already like that tweet.")
 	} else if err != gorm.ErrRecordNotFound {
 		return err
+	}
+	return nil
+}
+
+// userIdValid ensures that the userId is not empty.
+func (lv *likeValidator) userIdValid(like *domain.Like) error {
+	if like.UserID <= 0 {
+		return errs.UserIdValid
 	}
 	return nil
 }

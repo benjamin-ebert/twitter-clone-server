@@ -44,7 +44,7 @@ var _ domain.OAuthService = &OAuthService{}
 // Create runs validations needed for creating new OAuth database records.
 func (ov *oauthValidator) Create(oauth *domain.OAuth) error {
 	err := runOAuthValFns(oauth,
-		ov.userIdRequired,
+		ov.userIdValid,
 		ov.providerRequired,
 		ov.providerUserIdRequired)
 	if err != nil {
@@ -57,7 +57,7 @@ func (ov *oauthValidator) Create(oauth *domain.OAuth) error {
 func (ov *oauthValidator) Update(oauth *domain.OAuth) error {
 	err := runOAuthValFns(oauth,
 		ov.idValid,
-		ov.userIdRequired,
+		ov.userIdValid,
 		ov.providerRequired,
 		ov.providerUserIdRequired)
 	if err != nil {
@@ -83,7 +83,6 @@ type oauthValFn = func(oauth *domain.OAuth) error
 // idValid ensures that the passed in ID of a OAuth to be updated is greater than 0.
 func (ov *oauthValidator) idValid(oauth *domain.OAuth) error {
 	if oauth.ID <= 0 {
-		// TODO: Do it like that on all models..better keep that error private.
 		return errs.IdInvalid
 	}
 	return nil
@@ -106,10 +105,10 @@ func (ov *oauthValidator) providerUserIdRequired(oauth *domain.OAuth) error {
 	return nil
 }
 
-// userIdRequired ensures that the userId is not empty.
-func (ov *oauthValidator) userIdRequired(oauth *domain.OAuth) error {
+// userIdValid ensures that the userId is not empty.
+func (ov *oauthValidator) userIdValid(oauth *domain.OAuth) error {
 	if oauth.UserID <= 0 {
-		return errs.UserIDRequired
+		return errs.UserIdValid
 	}
 	return nil
 }

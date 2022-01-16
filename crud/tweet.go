@@ -44,8 +44,10 @@ func NewTweetService(db *gorm.DB) *TweetService {
 var _ domain.TweetService = &TweetService{}
 
 // Create runs validations needed for creating new Tweet database records.
+// TODO: Return the full retweeted / replied to tweet in JSON response, not just the foreign id?
 func (tv *tweetValidator) Create(tweet *domain.Tweet) error {
 	err := runTweetValFns(tweet,
+		tv.userIdValid,
 		tv.repliedToTweetExists,
 		tv.retweetedTweetExists,
 		tv.contentMinLength,
@@ -99,7 +101,7 @@ func (tv *tweetValidator) contentMaxLength(tweet *domain.Tweet) error {
 // idValid makes sure that the passed in ID of a Tweet to be deleted is greater than 0.
 func (tv *tweetValidator) idValid(tweet *domain.Tweet) error {
 	if tweet.ID <= 0 {
-		return errs.Errorf(errs.EINVALID, "Tweet ID is invalid.")
+		return errs.IdInvalid
 	}
 	return nil
 }
@@ -132,6 +134,14 @@ func (tv *tweetValidator) retweetedTweetExists(tweet *domain.Tweet) error {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+// userIdValid ensures that the userId is not empty.
+func (tv *tweetValidator) userIdValid(tweet *domain.Tweet) error {
+	if tweet.UserID <= 0 {
+		return errs.UserIdValid
 	}
 	return nil
 }

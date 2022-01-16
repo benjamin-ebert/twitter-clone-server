@@ -17,7 +17,7 @@ import (
 type Tweet struct {
 	ID int `json:"id"`
 	Content string `json:"content"`
-	UserID int `json:"user_id"`
+	UserID int `json:"user_id"` // TODO: add non null to this and other models. (Fix gorm defs in general)
 
 	RepliesToID int `json:"replies_to_id,omitempty" gorm:"default:null"`
 	Replies []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`

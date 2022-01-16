@@ -116,11 +116,12 @@ func ErrorStatusCode(code string) int {
 // to the operator. If they are returned, the user sees code 500 and "Internal error", and
 // the actual message gets printed to the log.
 const (
+	// IdInvalid is returned when there is an attempt to update or delete a database record
+	// where id is less or equal than 0.
 	IdInvalid privateError = "CRUD: The model's id is invalid."
-	// UserIDRequired is returned when there is an attempt to create a record in a table
+	// UserIdValid is returned when there is an attempt to create a record in a table
 	// that requires the foreign key user_id, without providing a user_id.
-	// TODO: Do this in probably all models on create.
-	UserIDRequired privateError = "CRUD: a user_id is required."
+	UserIdValid privateError = "CRUD: The model's user_id is invalid."
 	// ProviderRequired is returned when there is an attempt to create a new oauth record
 	// without providing the name of the provider
 	ProviderRequired privateError = "OAUTH: the name of the provider is required."
