@@ -9,7 +9,7 @@
     "port": 5432,
     "user": "postgres",
     "password": "",
-    "name": "twitter_clone"
+    "name": "wtf_twitter"
   },
 
   "github": {

@@ -23,6 +23,7 @@ type User struct {
 	Email string `json:"email" gorm:"notNull;uniqueIndex"`
 	Avatar string `json:"avatar"`
 	Header string `json:"header"`
+	// TODO: Add handle and quote (both strings).
 
 	Password string `json:"password" gorm:"-"`
 	PasswordHash string `json:"password_hash"`

@@ -51,23 +51,31 @@ func NewServer(
 		router: mux.NewRouter(),
 	}
 
+	r := s.router.PathPrefix("/api").Subrouter()
+
 	// Register routes of the auth system.
-	s.registerAuthRoutes(s.router)
-	s.registerOAuthRoutes(s.router)
+	s.registerAuthRoutes(r)
+	s.registerOAuthRoutes(r)
 
 	// Register routes of the crud system.
-	s.registerTweetRoutes(s.router)
-	s.registerFollowRoutes(s.router)
-	s.registerLikeRoutes(s.router)
-	s.registerImageRoutes(s.router)
+	s.registerTweetRoutes(r)
+	s.registerFollowRoutes(r)
+	s.registerLikeRoutes(r)
+	s.registerImageRoutes(r)
 
-	// Construct the CSRF protection middleware. A new CSRF tokens is issued when the client requests
-	// /register or /login with a GET request (they visit the register- or the login-page).
+	// Set up routes for serving images.
+	imageHandler := http.FileServer(http.Dir("./images/"))
+	s.router.PathPrefix("/images/").Handler(http.StripPrefix("/images/", imageHandler))
+
+	// Construct the CSRF protection middleware.
+	// A new CSRF tokens is issued when the client GETs /csrf or /login.
 	csrfAuthKey := make([]byte, 32)
 	if _, err := rand.Read(csrfAuthKey); err != nil {
 		panic(err)
 	}
-	csrfMw := csrf.Protect(csrfAuthKey, csrf.Secure(s.isProd), csrf.Path("/"))
+	// TODO: Figure out SameSite for the remember token cookie...
+	// ...since firefox warns it will be rejected if set to None like it is now.
+	csrfMw := csrf.Protect(csrfAuthKey, csrf.Secure(s.isProd), csrf.Path("/"), csrf.SameSite(csrf.SameSiteStrictMode))
 
 	// Set up middleware that needs to run on every request.
 	s.router.Use(csrfMw, setContentTypeJSON, s.checkUser)
@@ -86,5 +94,6 @@ func setContentTypeJSON(next http.Handler) http.Handler {
 
 // Run starts to listen and serve on the specified port.
 func (s *Server) Run(port int) {
-	log.Fatal(http.ListenAndServe("localhost:" + strconv.Itoa(port), s.router))
+	// 0.0.0.0 instead of localhost, so the proxy for the Angular SPA works properly.
+	log.Fatal(http.ListenAndServe("0.0.0.0:" + strconv.Itoa(port), s.router))
 }

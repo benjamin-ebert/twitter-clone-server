@@ -22,6 +22,25 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 
 	// Delete a tweet (regardless which type of tweet).
 	r.HandleFunc("/tweet/delete/{id:[0-9]+}", s.requireAuth(s.handleDeleteTweet)).Methods("DELETE")
+
+	r.HandleFunc("/tweets", s.handleGetTweets).Methods("GET")
+	// We need the following get routes:
+	// - all tweets of a user
+	// - only the original tweets of a user
+	// - a feed of tweets relevant to the authed user
+}
+
+func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
+	var tweets []domain.Tweet
+	//user := s.getUserFromContext(r.Context())
+	//user, err := s.us.ByID(user.ID)
+	user, _ := s.us.ByID(1)
+	tweets = user.Tweets
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(tweets); err != nil {
+		errs.LogError(r, err)
+		return
+	}
 }
 
 // handleCreateTweet handles the routes:

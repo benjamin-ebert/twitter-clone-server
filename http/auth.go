@@ -16,23 +16,55 @@ const ctxUserKey = "user"
 
 // registerAuthRoutes is a helper for registering all authentication routes.
 func (s *Server) registerAuthRoutes(r *mux.Router) {
+	// TODO: Add useful comment.
+	r.HandleFunc("/csrf", s.handleProvideCsrfToken).Methods("GET")
+
+	// TODO: Don't require auth? Simply return false if no user in context? Add useful comment.
+	r.HandleFunc("/is_logged_in", s.handleIsLoggedIn).Methods("GET")
+
 	// Display the login page (and issue a new CSRF token to the client).
+	// TODO: ...might as well remove the method ???
 	r.HandleFunc("/login", s.handleLoginPage).Methods("GET")
 
 	// Display the login page (and issue a new CSRF token to the client).
+	// TODO: ...might as well remove the method ???
 	r.HandleFunc("/register", s.handleRegisterPage).Methods("GET")
 
 	// Register a new user.
 	r.HandleFunc("/register", s.handleRegister).Methods("POST")
 
+	// TODO: Don't return all his stuff? Only return on /profile?
 	// Login an existing user.
 	r.HandleFunc("/login", s.handleLogin).Methods("POST")
 
 	// Logout a logged-in user.
 	r.HandleFunc("/logout", s.requireAuth(s.handleLogout)).Methods("POST")
 
+	// TODO: rename this to /user.
 	// View the authed user and his relationships.
 	r.HandleFunc("/profile", s.requireAuth(s.handleProfile)).Methods("GET")
+	// TODO: Have a separate /profile[user_id] route for getting profiles of non-authed users.
+}
+
+// TODO: Add useful comment.
+func (s *Server) handleIsLoggedIn(w http.ResponseWriter, r *http.Request) {
+	isLoggedIn := false
+	if user := s.getUserFromContext(r.Context()); user != nil {
+		isLoggedIn = true
+	}
+	if err := json.NewEncoder(w).Encode(&isLoggedIn); err != nil {
+		errs.LogError(r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// handleProvideCsrfToken TODO: Add useful comment.
+func (s *Server) handleProvideCsrfToken(w http.ResponseWriter, r *http.Request) {
+	// TODO: Add useful comments.
+	w.Header().Set("X-CSRF-Token", csrf.Token(r))
+	w.WriteHeader(http.StatusOK)
 }
 
 // handleRegister creates a new user record in the database and signs the user in.
@@ -130,7 +162,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-CSRF-Token", csrf.Token(r))
 
 	// Redirect to the login page.
-	http.Redirect(w, r, "/login", http.StatusFound)
+	http.Redirect(w, r, "/api/login", http.StatusFound)
 }
 
 // handleProfile handles the route "GET /profile".
@@ -173,13 +205,16 @@ func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 	// The csrf.Protect middleware will validate the token sent by the client against the
 	// value inside their _gorilla_csrf cookie (also set by the middleware). If that
 	// validation fails, the middleware assumes the request to be a csrf attack and blocks it.
-	w.Header().Set("X-CSRF-Token", csrf.Token(r))
-	response := make(map[string]string)
-	response["message"] = "Welcome back."
-	if err := json.NewEncoder(w).Encode(&response); err != nil {
-		errs.LogError(r, err)
-		return
-	}
+	// Todo: No new token here. That's only issued by /csrf.
+	//w.Header().Set("X-CSRF-Token", csrf.Token(r))
+	//response := make(map[string]string)
+	//response["message"] = "Please log in."
+	//if err := json.NewEncoder(w).Encode(&response); err != nil {
+	//	errs.LogError(r, err)
+	//	return
+	//}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *Server) handleRegisterPage(w http.ResponseWriter, r *http.Request) {
@@ -272,7 +307,7 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get the authed user from the request's context.
 		if user := s.getUserFromContext(r.Context()); user == nil {
-			http.Redirect(w, r, "/login", http.StatusFound)
+			http.Redirect(w, r, "/api/login", http.StatusUnauthorized)
 			return
 		}
 		// Return the subsequent request handler.

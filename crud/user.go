@@ -301,6 +301,7 @@ func (uv *userValidator) rememberSetIfUnset(user *domain.User) error {
 
 // ByID retrieves a User database record by ID, along with its associated Tweets, Likes, Followers
 // and "Followeds" (users whom the user is following), along with their most relevant associations.
+// TODO: Only original tweets + relations, and followers and followeds without relations.
 func (ug *userGorm) ByID(id int) (*domain.User, error) {
 	var user domain.User
 	err := ug.db.
