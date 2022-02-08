@@ -40,10 +40,8 @@ func (s *Server) registerAuthRoutes(r *mux.Router) {
 	// Logout a logged-in user.
 	r.HandleFunc("/logout", s.requireAuth(s.handleLogout)).Methods("POST")
 
-	// TODO: rename this to /user.
-	// View the authed user and his relationships.
-	r.HandleFunc("/profile", s.requireAuth(s.handleProfile)).Methods("GET")
-	// TODO: Have a separate /profile[user_id] route for getting profiles of non-authed users.
+	// Get basic data of the authenticated user.
+	r.HandleFunc("/user", s.requireAuth(s.handleUserInfo)).Methods("GET")
 }
 
 // TODO: Add useful comment.
@@ -165,28 +163,11 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/api/login", http.StatusFound)
 }
 
-// handleProfile handles the route "GET /profile".
-// It displays the authed user's data and relationships.
-func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
+// handleUserInfo handles the route "GET /user". It returns the authed user's basic data,
+// without relations. Used by the frontend SPA to get user info in order to maintain its auth state.
+func (s *Server) handleUserInfo(w http.ResponseWriter, r *http.Request) {
 	// Get the authed user from the request context.
-	u := s.getUserFromContext(r.Context())
-
-	// Fetch the user from the database, to get all his tweets and likes.
-	user, err := s.us.ByID(u.ID)
-	if err != nil {
-		errs.ReturnError(w, r, err)
-		return
-	}
-
-	// Get the images of the user's tweets.
-	for i, tweet := range user.Tweets {
-		images, err := s.is.ByOwner(domain.OwnerTypeTweet, tweet.ID)
-		if err != nil {
-			errs.ReturnError(w, r, err)
-			return
-		}
-		user.Tweets[i].Images = images
-	}
+	user := s.getUserFromContext(r.Context())
 
 	// Return the user.
 	w.WriteHeader(http.StatusOK)

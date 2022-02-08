@@ -58,6 +58,7 @@ func NewServer(
 	s.registerOAuthRoutes(r)
 
 	// Register routes of the crud system.
+	s.registerUserRoutes(r)
 	s.registerTweetRoutes(r)
 	s.registerFollowRoutes(r)
 	s.registerLikeRoutes(r)
