@@ -48,7 +48,7 @@ func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 
 	// Get total tweet count
 	// TODO: Handle err.
-	tweetCount, err := s.ts.CountAllByUserID(user.ID)
+	tweetCount, err := s.ts.CountByUserID(user.ID)
 	user.TweetCount = tweetCount
 
 	// Get follower count

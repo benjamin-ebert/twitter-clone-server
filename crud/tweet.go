@@ -2,6 +2,8 @@ package crud
 
 import (
 	"gorm.io/gorm"
+	"io/ioutil"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 	"wtfTwitter/domain"
@@ -178,7 +180,7 @@ func (tg *tweetGorm) OriginalsByUserID(userId int) ([]domain.Tweet, error) {
 	return tweets, nil
 }
 
-func (tg *tweetGorm) AllByUserID(userId int) ([]domain.Tweet, error) {
+func (tg *tweetGorm) ByUserID(userId int) ([]domain.Tweet, error) {
 	var tweets []domain.Tweet
 	err := tg.db.Where("user_id = ?", userId).Preload("User").Find(&tweets).Error
 	if err != nil {
@@ -187,7 +189,35 @@ func (tg *tweetGorm) AllByUserID(userId int) ([]domain.Tweet, error) {
 	return tweets, nil
 }
 
-func (tg *tweetGorm) CountAllByUserID(userId int) (int, error) {
+func (tg *tweetGorm) ImageTweetsByUserID(userId int) ([]domain.Tweet, error) {
+	files, err := ioutil.ReadDir(domain.ImagesBaseDir + "/" + domain.OwnerTypeTweet + "/")
+	if err != nil {
+		return nil, err
+	}
+	var imageTweetIds []int
+	for _, f := range files {
+		if f.IsDir() {
+			id, err := strconv.Atoi(f.Name())
+			if err != nil {
+				return nil, err
+			}
+			imageTweetIds = append(imageTweetIds, id)
+		}
+	}
+	var tweets []domain.Tweet
+	err = tg.db.
+		Where("user_id = ?", userId).
+		Where("id IN ?", imageTweetIds).
+		Preload("User").
+		Find(&tweets).Error
+	if err != nil {
+		return nil, err
+	}
+	return tweets, nil
+}
+
+// TODO: Put this logic into crud/user.go.
+func (tg *tweetGorm) CountByUserID(userId int) (int, error) {
 	var count int64
 	err := tg.db.Model(&domain.Tweet{}).Where("user_id = ?", userId).Count(&count).Error
 	if err != nil {

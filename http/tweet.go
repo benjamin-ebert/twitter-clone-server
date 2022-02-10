@@ -23,38 +23,53 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 	// Delete a tweet (regardless which type of tweet).
 	r.HandleFunc("/tweet/delete/{id:[0-9]+}", s.requireAuth(s.handleDeleteTweet)).Methods("DELETE")
 
-	// Get all tweets of a user.
-	r.HandleFunc("/tweets/{user_id:[0-9]+}", s.requireAuth(s.handleGetTweets)).Methods("GET")
-	// We need the following get routes:
-	// - all tweets of a user
-	// - only the original tweets of a user
-	// - a feed of tweets relevant to the authed user
+	// Get tweets of a user, either all or only those containing images. Depends on the sub_set parameter.
+	r.HandleFunc("/tweets/{sub_set}/{user_id:[0-9]+}", s.requireAuth(s.handleGetTweets)).Methods("GET")
 }
 
 func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
+	// Parse the requested tweet sub set from the url. Return error if parameter invalid.
+	subSet := mux.Vars(r)["sub_set"]
+	if subSet != "all" && subSet != "with_images" {
+		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid tweet sub set, must be 'all' or 'with_images'."))
+		return
+	}
 
+	// Parse the user id from the url.
 	userId, err := strconv.Atoi(mux.Vars(r)["user_id"])
 	if userId <=0 || err != nil{
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
 		return
 	}
 
-	tweets, err := s.ts.AllByUserID(userId)
-	if err != nil {
-		errs.ReturnError(w, r, err)
+	// Get either all the user's tweets, or only those containing images. Depends on the sub_set parameter.
+	var tweets []domain.Tweet
+	if subSet == "with_images"{
+		tweets, err = s.ts.ImageTweetsByUserID(userId)
+		if err != nil {
+			errs.ReturnError(w, r, err)
+		}
+	} else {
+		tweets, err = s.ts.ByUserID(userId)
+		if err != nil {
+			errs.ReturnError(w, r, err)
+		}
 	}
 
+	// Get the retrieved tweets' images from the filesystem.
 	if err = s.GetTweetImages(tweets); err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
 
+	// Count the retrieved tweets' replies, retweets and likes.
 	if err = s.CountAssociations(tweets); err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	// Return the tweets.
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(tweets); err != nil {
 		errs.LogError(r, err)
 		return
@@ -175,7 +190,7 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 
 // GetTweetImages takes an array of Tweet objects, finds each Tweet's images
 // in the filesystem and attaches the resulting Image array to the Tweet object.
-// TODO: Put that into the image crud package?
+// TODO: Put that into the crud/image.go package?
 func (s *Server) GetTweetImages(tweets []domain.Tweet) error {
 	for i, tweet := range tweets {
 		images, err := s.is.ByOwner(domain.OwnerTypeTweet, tweet.ID)
@@ -187,6 +202,9 @@ func (s *Server) GetTweetImages(tweets []domain.Tweet) error {
 	return nil
 }
 
+// CountAssociations takes a slice of Tweet objects, iterates over it and gets the
+// number of replies, retweets and likes of each tweet.
+// TODO: Put that into the crud/tweet.go?
 func (s *Server) CountAssociations(tweets []domain.Tweet) error {
 	for i, tweet := range tweets {
 		repliesCount, err := s.ts.CountReplies(tweet.ID)

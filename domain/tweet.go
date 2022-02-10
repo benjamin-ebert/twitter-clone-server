@@ -38,12 +38,16 @@ type Tweet struct {
 // TweetService is a set of methods to manipulate and work with the Tweet model.
 type TweetService interface {
 	ByID(id int) (*Tweet, error)
+	ByUserID(userId int) ([]Tweet, error)
 	OriginalsByUserID(userId int) ([]Tweet, error)
-	AllByUserID(userId int) ([]Tweet, error)
-	CountAllByUserID(userId int) (int, error)
+	ImageTweetsByUserID(userId int) ([]Tweet, error)
+
+	// TODO: Put this into user.go?
+	CountByUserID(userId int) (int, error)
 	CountReplies(id int) (int, error)
 	CountRetweets(id int) (int, error)
 	CountLikes(id int) (int, error)
+
 	Create(tweet *Tweet) error
 	Delete(tweet *Tweet) error
 }
