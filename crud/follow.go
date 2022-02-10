@@ -121,6 +121,28 @@ func (fv *followValidator) notAlreadyFollowed(follow *domain.Follow) error {
 	return nil
 }
 
+// CountFollowers takes a user ID and returns the number of users
+// who are following the user with the given ID, or an error.
+func (fg *followGorm) CountFollowers(userId int) (int, error) {
+	var count int64
+	err := fg.db.Model(&domain.Follow{}).Where("followed_id = ?", userId).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// CountFolloweds takes a user ID and returns the number of users
+// who are being followed by the user with the given ID, or an error.
+func (fg *followGorm) CountFolloweds(userId int) (int, error) {
+	var count int64
+	err := fg.db.Model(&domain.Follow{}).Where("follower_id = ?", userId).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
 // Create stores the data from the Follow object in a new database record.
 // On success, it eager-loads (preloads) the follower and followed user relations,
 // so that the json response displays the full user data of each.

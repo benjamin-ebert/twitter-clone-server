@@ -22,37 +22,56 @@ func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the user from the database, along with their original tweets.
-	// TODO: Only get the user here, get their tweets in a separate query.
+	// Fetch the user from the database.
 	user, err := s.us.ByID(userId)
 	if err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
 
-	// Get original tweets by user id
-	// TODO: Handle err.
-	originalTweets, err := s.ts.OriginalsByUserID(user.ID)
-	user.Tweets = originalTweets
+	// Get follower count.
+	followerCount, err := s.fs.CountFollowers(user.ID)
+	if err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+	user.FollowerCount = followerCount
 
-	// Get the images of the user's tweets.
+	// Get followed count.
+	followedCount, err := s.fs.CountFollowers(user.ID)
+	if err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+	user.FollowedCount = followedCount
+
+	// Get their total tweet count.
+	tweetCount, err := s.ts.CountByUserID(user.ID)
+	if err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+	user.TweetCount = tweetCount
+
+	// Get their original tweets (to populate the default selected tab in the profile view).
+	originals, err := s.ts.OriginalsByUserID(user.ID)
+	if err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+	user.Tweets = originals
+
+	// Get their original tweets' images from the filesystem.
 	if err = s.GetTweetImages(user.Tweets); err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
 
+	// Count their original tweets' replies, retweets and likes.
 	if err = s.CountAssociations(user.Tweets); err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
-
-	// Get total tweet count
-	// TODO: Handle err.
-	tweetCount, err := s.ts.CountByUserID(user.ID)
-	user.TweetCount = tweetCount
-
-	// Get follower count
-	// Get followeds count
 
 	// Return the user.
 	w.WriteHeader(http.StatusOK)

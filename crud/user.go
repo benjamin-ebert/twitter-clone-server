@@ -304,15 +304,7 @@ func (uv *userValidator) rememberSetIfUnset(user *domain.User) error {
 // TODO: Only original tweets + relations, and followers and followeds without relations OR just count?
 func (ug *userGorm) ByID(id int) (*domain.User, error) {
 	var user domain.User
-	err := ug.db.
-		//Preload("Tweets.Replies.User").
-		//Preload("Tweets.Retweets.User").
-		//Preload("Tweets.Likes").
-		//Preload("Tweets.User").
-		//Preload("Likes.Tweet.User").
-		Preload("Followers.Follower").
-		Preload("Followeds.Followed").
-		First(&user, "id = ?", id).Error
+	err := ug.db.First(&user, "id = ?", id).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, errs.Errorf(errs.ENOTFOUND, "The user does not exist")

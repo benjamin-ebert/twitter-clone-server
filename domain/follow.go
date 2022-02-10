@@ -2,10 +2,11 @@ package domain
 
 import "time"
 
-// Follow represents a self-referential many-to-may relationship between two users.
+// Follow represents a many-to-may relationship between two users.
+// In the database Follows are stored in the follows-table, which is essentially a pivot-table.
 // A Follow is created when one user decides to follow another user.
-// The FollowerID is the ID of the user that follows, and the FollowedID is the ID of the
-// user that is being followed. In the database Follows are stored within the follows-table.
+// The FollowerID is the ID of the user that follows.
+// The FollowedID is the ID of the user that is being followed.
 type Follow struct {
 	ID int `json:"id"`
 	FollowerID int `json:"-" gorm:"notNull;index"`
@@ -18,6 +19,8 @@ type Follow struct {
 
 // FollowService is a set of methods to manipulate and work with the Follow model.
 type FollowService interface {
+	CountFollowers(userId int) (int, error)
+	CountFolloweds(userId int) (int, error)
 	Create(follow *Follow) error
 	Delete(follow *Follow) error
 }
