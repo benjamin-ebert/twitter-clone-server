@@ -37,9 +37,12 @@ type User struct {
 
 	OAuths []OAuth `json:"o_auths" gorm:"foreignKey:UserID"`
 	Tweets []Tweet `json:"tweets" gorm:"foreignKey:UserID"`
+	TweetCount int `json:"tweet_count" gorm:"-"`
 	Likes []Like `json:"likes" gorm:"foreignKey:UserID"`
 	Followers []Follow `json:"followers" gorm:"foreignKey:FollowedID"`
+	FollowerCount int `json:"follower_count" gorm:"-"`
 	Followeds []Follow `json:"follows" gorm:"foreignKey:FollowerID"`
+	FollowedCount int `json:"followed_count" gorm:"-"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

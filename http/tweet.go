@@ -23,7 +23,8 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 	// Delete a tweet (regardless which type of tweet).
 	r.HandleFunc("/tweet/delete/{id:[0-9]+}", s.requireAuth(s.handleDeleteTweet)).Methods("DELETE")
 
-	r.HandleFunc("/tweets", s.handleGetTweets).Methods("GET")
+	// Get all tweets of a user.
+	r.HandleFunc("/tweets/{user_id:[0-9]+}", s.requireAuth(s.handleGetTweets)).Methods("GET")
 	// We need the following get routes:
 	// - all tweets of a user
 	// - only the original tweets of a user
@@ -31,11 +32,28 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 }
 
 func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
-	var tweets []domain.Tweet
-	//user := s.getUserFromContext(r.Context())
-	//user, err := s.us.ByID(user.ID)
-	user, _ := s.us.ByID(1)
-	tweets = user.Tweets
+
+	userId, err := strconv.Atoi(mux.Vars(r)["user_id"])
+	if userId <=0 || err != nil{
+		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
+		return
+	}
+
+	tweets, err := s.ts.AllByUserID(userId)
+	if err != nil {
+		errs.ReturnError(w, r, err)
+	}
+
+	if err = s.GetTweetImages(tweets); err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+
+	if err = s.CountAssociations(tweets); err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(tweets); err != nil {
 		errs.LogError(r, err)
@@ -153,4 +171,41 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 		errs.LogError(r, err)
 		return
 	}
+}
+
+// GetTweetImages takes an array of Tweet objects, finds each Tweet's images
+// in the filesystem and attaches the resulting Image array to the Tweet object.
+// TODO: Put that into the image crud package?
+func (s *Server) GetTweetImages(tweets []domain.Tweet) error {
+	for i, tweet := range tweets {
+		images, err := s.is.ByOwner(domain.OwnerTypeTweet, tweet.ID)
+		if err != nil {
+			return err
+		}
+		tweets[i].Images = images
+	}
+	return nil
+}
+
+func (s *Server) CountAssociations(tweets []domain.Tweet) error {
+	for i, tweet := range tweets {
+		repliesCount, err := s.ts.CountReplies(tweet.ID)
+		if err != nil {
+			return err
+		}
+		tweets[i].RepliesCount = repliesCount
+
+		retweetsCount, err := s.ts.CountRetweets(tweet.ID)
+		if err != nil {
+			return err
+		}
+		tweets[i].RetweetsCount = retweetsCount
+
+		likesCount, err := s.ts.CountLikes(tweet.ID)
+		if err != nil {
+			return err
+		}
+		tweets[i].LikesCount = likesCount
+	}
+	return nil
 }

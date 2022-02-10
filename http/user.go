@@ -5,7 +5,6 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
-	"wtfTwitter/domain"
 	"wtfTwitter/errs"
 )
 
@@ -31,15 +30,29 @@ func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get original tweets by user id
+	// TODO: Handle err.
+	originalTweets, err := s.ts.OriginalsByUserID(user.ID)
+	user.Tweets = originalTweets
+
 	// Get the images of the user's tweets.
-	for i, tweet := range user.Tweets {
-		images, err := s.is.ByOwner(domain.OwnerTypeTweet, tweet.ID)
-		if err != nil {
-			errs.ReturnError(w, r, err)
-			return
-		}
-		user.Tweets[i].Images = images
+	if err = s.GetTweetImages(user.Tweets); err != nil {
+		errs.ReturnError(w, r, err)
+		return
 	}
+
+	if err = s.CountAssociations(user.Tweets); err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+
+	// Get total tweet count
+	// TODO: Handle err.
+	tweetCount, err := s.ts.CountAllByUserID(user.ID)
+	user.TweetCount = tweetCount
+
+	// Get follower count
+	// Get followeds count
 
 	// Return the user.
 	w.WriteHeader(http.StatusOK)

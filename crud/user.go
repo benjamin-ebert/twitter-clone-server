@@ -305,10 +305,11 @@ func (uv *userValidator) rememberSetIfUnset(user *domain.User) error {
 func (ug *userGorm) ByID(id int) (*domain.User, error) {
 	var user domain.User
 	err := ug.db.
-		Preload("Tweets.Replies").
-		Preload("Tweets.Retweets").
-		Preload("Tweets.Likes").
-		Preload("Likes.Tweet").
+		//Preload("Tweets.Replies.User").
+		//Preload("Tweets.Retweets.User").
+		//Preload("Tweets.Likes").
+		//Preload("Tweets.User").
+		//Preload("Likes.Tweet.User").
 		Preload("Followers.Follower").
 		Preload("Followeds.Followed").
 		First(&user, "id = ?", id).Error

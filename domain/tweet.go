@@ -17,13 +17,17 @@ import (
 type Tweet struct {
 	ID int `json:"id"`
 	UserID int `json:"user_id" gorm:"notNull;index"`
+	User User `json:"user"`
 	Content string `json:"content"`
 
 	RepliesToID int `json:"replies_to_id,omitempty" gorm:"default:null"`
 	Replies []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`
+	RepliesCount int `json:"replies_count" gorm:"-"`
 	RetweetsID int `json:"retweets_id,omitempty" gorm:"default:null"`
 	Retweets []Tweet `json:"retweets" gorm:"foreignKey:RetweetsID"`
+	RetweetsCount int `json:"retweets_count" gorm:"-"`
 	Likes []Like `json:"likes" gorm:"foreignKey:TweetID"`
+	LikesCount int `json:"likes_count" gorm:"-"`
 	Images []Image `json:"images" gorm:"-"`
 
 	CreatedAt time.Time `json:"created_at"`
@@ -34,6 +38,12 @@ type Tweet struct {
 // TweetService is a set of methods to manipulate and work with the Tweet model.
 type TweetService interface {
 	ByID(id int) (*Tweet, error)
+	OriginalsByUserID(userId int) ([]Tweet, error)
+	AllByUserID(userId int) ([]Tweet, error)
+	CountAllByUserID(userId int) (int, error)
+	CountReplies(id int) (int, error)
+	CountRetweets(id int) (int, error)
+	CountLikes(id int) (int, error)
 	Create(tweet *Tweet) error
 	Delete(tweet *Tweet) error
 }

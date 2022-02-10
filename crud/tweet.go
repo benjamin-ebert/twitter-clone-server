@@ -163,6 +163,66 @@ func (tg *tweetGorm) ByID(id int) (*domain.Tweet, error) {
 	return &tweet, nil
 }
 
+// TODO: Add comments.
+func (tg *tweetGorm) OriginalsByUserID(userId int) ([]domain.Tweet, error) {
+	var tweets []domain.Tweet
+	err := tg.db.
+		Where("user_id = ?", userId).
+		Where("replies_to_id IS NULL").
+		Where("retweets_id IS NULL").
+		Preload("User").
+		Find(&tweets).Error
+	if err != nil {
+		return nil, err
+	}
+	return tweets, nil
+}
+
+func (tg *tweetGorm) AllByUserID(userId int) ([]domain.Tweet, error) {
+	var tweets []domain.Tweet
+	err := tg.db.Where("user_id = ?", userId).Preload("User").Find(&tweets).Error
+	if err != nil {
+		return nil, err
+	}
+	return tweets, nil
+}
+
+func (tg *tweetGorm) CountAllByUserID(userId int) (int, error) {
+	var count int64
+	err := tg.db.Model(&domain.Tweet{}).Where("user_id = ?", userId).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+func (tg *tweetGorm) CountReplies(id int) (int, error) {
+	var count int64
+	err := tg.db.Model(&domain.Tweet{}).Where("replies_to_id = ?", id).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+func (tg *tweetGorm) CountRetweets(id int) (int, error) {
+	var count int64
+	err := tg.db.Model(&domain.Tweet{}).Where("retweets_id = ?", id).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+func (tg *tweetGorm) CountLikes(id int) (int, error) {
+	var count int64
+	err := tg.db.Model(&domain.Like{}).Where("tweet_id = ?", id).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
 // Create stores the data from the Tweet object in a new database record.
 func (tg *tweetGorm) Create(tweet *domain.Tweet) error {
 	err := tg.db.Create(tweet).Error
