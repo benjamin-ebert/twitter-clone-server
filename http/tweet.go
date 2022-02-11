@@ -23,15 +23,19 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 	// Delete a tweet (regardless which type of tweet).
 	r.HandleFunc("/tweet/delete/{id:[0-9]+}", s.requireAuth(s.handleDeleteTweet)).Methods("DELETE")
 
-	// Get tweets of a user, either all or only those containing images. Depends on the sub_set parameter.
-	r.HandleFunc("/tweets/{sub_set}/{user_id:[0-9]+}", s.requireAuth(s.handleGetTweets)).Methods("GET")
+	// Get one of the three possible subsets of tweets to be displayed on a user's profile.
+	r.HandleFunc("/tweets/{subset}/{user_id:[0-9]+}", s.requireAuth(s.handleGetTweets)).Methods("GET")
 }
 
+// handleGetTweets gets one of three possible subsets of tweets to be displayed on a user's profile,
+// depending on the value of the subset url parameter. Possible values are "all", "with_images" and "liked".
+// "all" gets all tweets created by the user. "with_images" gets the user's tweets that contain images.
+// "liked" gets all the tweets the user has liked in the past (usually created by other users).
 func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 	// Parse the requested tweet sub set from the url. Return error if parameter invalid.
-	subSet := mux.Vars(r)["sub_set"]
-	if subSet != "all" && subSet != "with_images" {
-		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid tweet sub set, must be 'all' or 'with_images'."))
+	subset := mux.Vars(r)["subset"]
+	if subset != "all" && subset != "with_images" && subset != "liked" {
+		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid tweet sub set, must be 'all', 'with_images' or 'liked'."))
 		return
 	}
 
@@ -42,18 +46,31 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get either all the user's tweets, or only those containing images. Depends on the sub_set parameter.
+	// Get the tweets according to the value of the subset url parameter.
 	var tweets []domain.Tweet
-	if subSet == "with_images"{
-		tweets, err = s.ts.ImageTweetsByUserID(userId)
-		if err != nil {
-			errs.ReturnError(w, r, err)
-		}
-	} else {
+	switch subset {
+	case "all":
 		tweets, err = s.ts.ByUserID(userId)
 		if err != nil {
 			errs.ReturnError(w, r, err)
 		}
+	case "with_images":
+		tweets, err = s.ts.ImageTweetsByUserID(userId)
+		if err != nil {
+			errs.ReturnError(w, r, err)
+		}
+	case "liked":
+		// TODO: Probably screw this.. just preload the user's likes from like service instead?
+		var likes []domain.Like
+		likes, err = s.ls.ByUserID(userId)
+		if err != nil {
+			errs.ReturnError(w, r, err)
+		}
+		for _, like := range likes {
+			tweets = append(tweets, like.Tweet)
+		}
+	default:
+		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid tweet subset."))
 	}
 
 	// Get the retrieved tweets' images from the filesystem.

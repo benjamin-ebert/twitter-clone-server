@@ -263,15 +263,9 @@ func (tg *tweetGorm) Create(tweet *domain.Tweet) error {
 }
 
 // Delete soft-deletes a Tweet record from the database, along with its associated
-// Replies and Retweets (not cascading to delete their Replies / Retweets).
-// It does not delete its Likes or the Likes of its Replies / Retweets.
-// That's to still have them, should the soft-deleted Tweets need to be recovered.
-// So currently Tweets are never permanently deleted and Likes are never deleted at all.
-// One possible solution would be an automated hard-delete of the soft-deleted Tweets
-// and their associated Likes, running after a fixed time-period past initial deletion.
-// Right now that's beyond the scope of the project.
+// Replies, Retweets (not cascading to delete their Replies / Retweets) and Likes.
 func (tg *tweetGorm) Delete(tweet *domain.Tweet) error {
-	err := tg.db.Select("Replies", "Retweets").Delete(tweet).Error
+	err := tg.db.Select("Replies", "Retweets", "Likes").Delete(tweet).Error
 	if err != nil {
 		return err
 	}
