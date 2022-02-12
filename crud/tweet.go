@@ -173,6 +173,7 @@ func (tg *tweetGorm) OriginalsByUserID(userId int) ([]domain.Tweet, error) {
 		Where("replies_to_id IS NULL").
 		Where("retweets_id IS NULL").
 		Preload("User").
+		Order("created_at desc").
 		Find(&tweets).Error
 	if err != nil {
 		return nil, err
@@ -182,7 +183,11 @@ func (tg *tweetGorm) OriginalsByUserID(userId int) ([]domain.Tweet, error) {
 
 func (tg *tweetGorm) ByUserID(userId int) ([]domain.Tweet, error) {
 	var tweets []domain.Tweet
-	err := tg.db.Where("user_id = ?", userId).Preload("User").Find(&tweets).Error
+	err := tg.db.
+		Where("user_id = ?", userId).
+		Preload("User").
+		Order("created_at desc").
+		Find(&tweets).Error
 	if err != nil {
 		return nil, err
 	}
@@ -209,6 +214,21 @@ func (tg *tweetGorm) ImageTweetsByUserID(userId int) ([]domain.Tweet, error) {
 		Where("user_id = ?", userId).
 		Where("id IN ?", imageTweetIds).
 		Preload("User").
+		Order("created_at desc").
+		Find(&tweets).Error
+	if err != nil {
+		return nil, err
+	}
+	return tweets, nil
+}
+
+func (tg *tweetGorm) LikedTweetsByUserID(userId int) ([]domain.Tweet, error) {
+	var tweets []domain.Tweet
+	err := tg.db.
+		Joins("JOIN likes ON likes.tweet_id=tweets.id").
+		Where("likes.user_id = ?", userId).
+		Preload("User").
+		Order("created_at desc").
 		Find(&tweets).Error
 	if err != nil {
 		return nil, err

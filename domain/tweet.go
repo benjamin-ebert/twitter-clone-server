@@ -41,6 +41,7 @@ type TweetService interface {
 	ByUserID(userId int) ([]Tweet, error)
 	OriginalsByUserID(userId int) ([]Tweet, error)
 	ImageTweetsByUserID(userId int) ([]Tweet, error)
+	LikedTweetsByUserID(userId int) ([]Tweet, error)
 
 	// TODO: Put this into user.go?
 	CountByUserID(userId int) (int, error)

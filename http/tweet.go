@@ -60,14 +60,9 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 			errs.ReturnError(w, r, err)
 		}
 	case "liked":
-		// TODO: Probably screw this.. just preload the user's likes from like service instead?
-		var likes []domain.Like
-		likes, err = s.ls.ByUserID(userId)
+		tweets, err = s.ts.LikedTweetsByUserID(userId)
 		if err != nil {
 			errs.ReturnError(w, r, err)
-		}
-		for _, like := range likes {
-			tweets = append(tweets, like.Tweet)
 		}
 	default:
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid tweet subset."))
