@@ -9,6 +9,9 @@ latest:
 
 todo:
 
+- separate json structs for spa?
+- remove password hash / remember hash from user json?
+
 - [x] auth system
   - [ ] proper user json fields
 - [ ] user 
