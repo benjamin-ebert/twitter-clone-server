@@ -19,11 +19,12 @@ import (
 // paths to the stored images on the server.
 type User struct {
 	ID int `json:"id"`
-	Name string `json:"name"`
 	Email string `json:"email" gorm:"notNull;uniqueIndex"`
+	Name string `json:"name"` // TODO: Not null
+	Handle string `json:"handle"` // TODO: Not null, index?
+	Bio string `json:"bio"` // TODO: Maxlength here or in validation?
 	Avatar string `json:"avatar"`
 	Header string `json:"header"`
-	// TODO: Add handle and quote (both strings).
 
 	Password string `json:"password" gorm:"-"`
 	PasswordHash string `json:"password_hash"`

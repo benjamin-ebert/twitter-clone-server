@@ -11,6 +11,9 @@ import (
 
 //registerTweetRoutes is a helper for registering all tweet routes.
 func (s *Server) registerTweetRoutes(r *mux.Router) {
+	// Get one of the three possible subsets of tweets to be displayed on a user's profile.
+	r.HandleFunc("/tweets/{subset}/{user_id:[0-9]+}", s.requireAuth(s.handleGetTweets)).Methods("GET")
+
 	// Create a new original tweet (not a retweet or reply).
 	r.HandleFunc("/tweet", s.requireAuth(s.handleCreateTweet)).Methods("POST")
 
@@ -22,9 +25,6 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 
 	// Delete a tweet (regardless which type of tweet).
 	r.HandleFunc("/tweet/delete/{id:[0-9]+}", s.requireAuth(s.handleDeleteTweet)).Methods("DELETE")
-
-	// Get one of the three possible subsets of tweets to be displayed on a user's profile.
-	r.HandleFunc("/tweets/{subset}/{user_id:[0-9]+}", s.requireAuth(s.handleGetTweets)).Methods("GET")
 }
 
 // handleGetTweets gets one of three possible subsets of tweets to be displayed on a user's profile,
@@ -193,6 +193,7 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return the soft-deleted tweet.
+	// TODO: Really? Better return 204 and empty response. Maybe for all delete operations.
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(tweet); err != nil {
 		errs.LogError(r, err)

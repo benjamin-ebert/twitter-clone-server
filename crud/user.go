@@ -129,6 +129,7 @@ func (uv *userValidator) Create(ctx context.Context, user *domain.User) error {
 // Update runs validations needed for updating a User record in the database.
 // It will hash a remember token if it is provided (and will not return an error if it's not).
 func (uv *userValidator) Update(ctx context.Context, user *domain.User) error {
+	// TODO: Add max name / handle / bio length validation?
 	err := runUserValFns(user,
 		uv.passwordMinLength,
 		uv.passwordBcrypt,
