@@ -25,6 +25,7 @@ type User struct {
 	Bio string `json:"bio"` // TODO: Maxlength here or in validation?
 	Avatar string `json:"avatar"`
 	Header string `json:"header"`
+	AuthFollows bool `json:"auth_follows" gorm:"-"`
 
 	Password string `json:"password" gorm:"-"`
 	PasswordHash string `json:"password_hash"`

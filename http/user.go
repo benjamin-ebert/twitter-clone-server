@@ -33,6 +33,12 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if the authed user is following that user
+	authedUser := s.getUserFromContext(r.Context())
+	if authedUser.ID != userId {
+		user.AuthFollows = s.fs.IsFollowing(authedUser.ID, userId)
+	}
+
 	// TODO: Have a CountAssociations method in crud/user.go, like for tweets?
 	// Get follower count.
 	followerCount, err := s.fs.CountFollowers(user.ID)
@@ -43,7 +49,7 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	user.FollowerCount = followerCount
 
 	// Get followed count.
-	followedCount, err := s.fs.CountFollowers(user.ID)
+	followedCount, err := s.fs.CountFolloweds(user.ID)
 	if err != nil {
 		errs.ReturnError(w, r, err)
 		return
