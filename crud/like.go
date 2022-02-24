@@ -134,11 +134,12 @@ func (lg *likeGorm) ByUserID(userId int) ([]domain.Like, error) {
 	return likes, nil
 }
 
-// AuthLikes takes a user ID and a tweet ID and returns a boolean expressing whether
+// CheckAuthLikes takes a user ID and a tweet ID and returns a boolean expressing whether
 // the given user likes the given tweet or not.
-func (lg *likeGorm) AuthLikes(userId, tweetId int) bool {
-	err := lg.db.First(&domain.Like{}, &domain.Like{UserID: userId, TweetID: tweetId}).Error
-	if err == nil {
+func (lg *likeGorm) CheckAuthLikes(userId, tweetId int) bool {
+	var count int64
+	lg.db.Model(&domain.Like{}).Where("user_id = ? AND tweet_id = ?", userId, tweetId).Count(&count)
+	if count > 0 {
 		return true
 	}
 	return false

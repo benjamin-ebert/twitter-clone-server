@@ -23,6 +23,7 @@ type Tweet struct {
 	RepliesToID int `json:"replies_to_id,omitempty" gorm:"default:null"`
 	Replies []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`
 	RepliesCount int `json:"replies_count" gorm:"-"`
+	AuthReplied bool `json:"auth_replied" gorm:"-"`
 	RetweetsID int `json:"retweets_id,omitempty" gorm:"default:null"`
 	Retweets []Tweet `json:"retweets" gorm:"foreignKey:RetweetsID"`
 	RetweetsCount int `json:"retweets_count" gorm:"-"`
@@ -49,6 +50,9 @@ type TweetService interface {
 	CountReplies(id int) (int, error)
 	CountRetweets(id int) (int, error)
 	CountLikes(id int) (int, error)
+
+	// TODO: Put this somewhere else?
+	CheckAuthReplied(authedUserId, tweetId int) bool
 
 	Create(tweet *Tweet) error
 	Delete(tweet *Tweet) error

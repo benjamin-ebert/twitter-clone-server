@@ -256,6 +256,17 @@ func (tg *tweetGorm) CountReplies(id int) (int, error) {
 	return int(count), nil
 }
 
+// CheckAuthReplied takes a user ID and a tweet ID and returns a boolean expressing whether
+// the given user has replied to the given tweet in the past.
+func (tg *tweetGorm) CheckAuthReplied(userId, tweetId int) bool {
+	var count int64
+	tg.db.Model(&domain.Tweet{}).Where("user_id = ? AND replies_to_id = ?", userId, tweetId).Count(&count)
+	if count > 0 {
+		return true
+	}
+	return false
+}
+
 func (tg *tweetGorm) CountRetweets(id int) (int, error) {
 	var count int64
 	err := tg.db.Model(&domain.Tweet{}).Where("retweets_id = ?", id).Count(&count).Error

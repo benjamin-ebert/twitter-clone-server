@@ -13,6 +13,8 @@ func (s *Server) registerUserRoutes(r *mux.Router) {
 	// Get the profile data of a specific user.
 	r.HandleFunc("/profile/{user_id:[0-9]+}", s.requireAuth(s.handleGetProfile)).Methods("GET")
 
+	// Update the user's data.
+	// TODO: Put this into auth.go?
 	r.HandleFunc("/profile/update", s.requireAuth(s.handleUpdateProfile)).Methods("PUT")
 }
 
@@ -85,8 +87,10 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check for each tweet if the authed user likes it.
-	// TODO: Can there be an error?
 	s.SetAuthLikes(authedUser.ID, user.Tweets)
+
+	// Check for each tweet if the authed user has replied to it.
+	s.SetAuthReplied(authedUser.ID, user.Tweets)
 
 	// Return the user.
 	w.WriteHeader(http.StatusOK)

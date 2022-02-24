@@ -12,18 +12,14 @@ import (
 //registerTweetRoutes is a helper for registering all tweet routes.
 func (s *Server) registerTweetRoutes(r *mux.Router) {
 	// Get one of the three possible subsets of tweets to be displayed on a user's profile.
+	// The subsets are: all tweets of the user, the user's original tweets (not a retweet or reply),
+	// or tweets of other users that the user has liked.
 	r.HandleFunc("/tweets/{subset}/{user_id:[0-9]+}", s.requireAuth(s.handleGetTweets)).Methods("GET")
 
-	// Create a new original tweet (not a retweet or reply).
+	// Create a new tweet.
 	r.HandleFunc("/tweet", s.requireAuth(s.handleCreateTweet)).Methods("POST")
 
-	// Create a new reply tweet, replying to an existing tweet.
-	r.HandleFunc("/reply/{replies_to_id:[0-9]+}", s.requireAuth(s.handleCreateTweet)).Methods("POST")
-
-	// Create a new retweet, retweeting an existing tweet.
-	r.HandleFunc("/retweet/{retweets_id:[0-9]+}", s.requireAuth(s.handleCreateTweet)).Methods("POST")
-
-	// Delete a tweet (regardless which type of tweet).
+	// Delete a tweet.
 	r.HandleFunc("/tweet/delete/{id:[0-9]+}", s.requireAuth(s.handleDeleteTweet)).Methods("DELETE")
 }
 
@@ -86,6 +82,9 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 	// For each of the tweets, determine if the authenticated user likes it or not.
 	s.SetAuthLikes(authedUser.ID, tweets)
 
+	// For each of the tweets, determine if the authenticated user has replied to it or not.
+	s.SetAuthReplied(authedUser.ID, tweets)
+
 	// Return the tweets.
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(tweets); err != nil {
@@ -109,24 +108,6 @@ func (s *Server) handleCreateTweet(w http.ResponseWriter, r *http.Request) {
 	// Get the authed user's ID and set it as the new Tweet's UserID.
 	user := s.getUserFromContext(r.Context())
 	tweet.UserID = user.ID
-
-	// If present, parse the ID of the Tweet replied to from the url.
-	if repliesToId, err := strconv.Atoi(mux.Vars(r)["replies_to_id"]); repliesToId > 0 {
-		if err != nil {
-			errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
-			return
-		}
-		tweet.RepliesToID = repliesToId
-	}
-
-	// If present, parse the ID of the Tweet retweeted from the url.
-	if retweetsId, err := strconv.Atoi(mux.Vars(r)["retweets_id"]); retweetsId > 0 {
-		if err != nil {
-			errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
-			return
-		}
-		tweet.RetweetsID = retweetsId
-	}
 
 	// Create a new Tweet database record.
 	err := s.ts.Create(&tweet)
@@ -251,6 +232,14 @@ func (s *Server) CountAssociations(tweets []domain.Tweet) error {
 // It iterates over the tweets and determines whether the user likes each tweet or not.
 func (s *Server) SetAuthLikes(authedUserId int, tweets []domain.Tweet) {
 	for i, tweet := range tweets {
-		tweets[i].AuthLikes = s.ls.AuthLikes(authedUserId, tweet.ID)
+		tweets[i].AuthLikes = s.ls.CheckAuthLikes(authedUserId, tweet.ID)
+	}
+}
+
+// SetAuthReplied takes a slice of Tweet objects and the ID of the authenticated user.
+// It iterates over the tweets and determines whether the user has replied to each tweet or not.
+func (s *Server) SetAuthReplied(authedUserId int, tweets []domain.Tweet) {
+	for i, tweet := range tweets {
+		tweets[i].AuthReplied = s.ts.CheckAuthReplied(authedUserId, tweet.ID)
 	}
 }
