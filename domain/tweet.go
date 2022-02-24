@@ -28,6 +28,7 @@ type Tweet struct {
 	RetweetsCount int `json:"retweets_count" gorm:"-"`
 	Likes []Like `json:"likes" gorm:"foreignKey:TweetID"`
 	LikesCount int `json:"likes_count" gorm:"-"`
+	AuthLikes bool `json:"auth_likes" gorm:"-"`
 	Images []Image `json:"images" gorm:"-"`
 
 	CreatedAt time.Time `json:"created_at"`

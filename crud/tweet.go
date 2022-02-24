@@ -227,6 +227,7 @@ func (tg *tweetGorm) LikedTweetsByUserID(userId int) ([]domain.Tweet, error) {
 	err := tg.db.
 		Joins("JOIN likes ON likes.tweet_id=tweets.id").
 		Where("likes.user_id = ?", userId).
+		Where("likes.deleted_at IS NULL").
 		Preload("User").
 		Order("created_at desc").
 		Find(&tweets).Error

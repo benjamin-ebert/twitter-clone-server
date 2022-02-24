@@ -33,10 +33,10 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the authed user is following that user
+	// Check if the authed user is following that user.
 	authedUser := s.getUserFromContext(r.Context())
 	if authedUser.ID != userId {
-		user.AuthFollows = s.fs.IsFollowing(authedUser.ID, userId)
+		user.AuthFollows = s.fs.AuthFollows(authedUser.ID, userId)
 	}
 
 	// TODO: Have a CountAssociations method in crud/user.go, like for tweets?
@@ -83,6 +83,10 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		errs.ReturnError(w, r, err)
 		return
 	}
+
+	// Check for each tweet if the authed user likes it.
+	// TODO: Can there be an error?
+	s.SetAuthLikes(authedUser.ID, user.Tweets)
 
 	// Return the user.
 	w.WriteHeader(http.StatusOK)

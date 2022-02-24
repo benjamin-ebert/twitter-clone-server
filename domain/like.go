@@ -16,12 +16,14 @@ type Like struct {
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// TODO: Better hard delete?
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
 // LikeService is a set of methods to manipulate and work with the Like model.
 type LikeService interface {
 	ByUserID(userId int) ([]Like, error)
+	AuthLikes(authedUserId, tweetId int) bool
 	Create(like *Like) error
 	Delete(like *Like) error
 }

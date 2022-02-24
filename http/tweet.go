@@ -46,6 +46,9 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get the authenticated user.
+	authedUser := s.getUserFromContext(r.Context())
+
 	// Get the tweets according to the value of the subset url parameter.
 	var tweets []domain.Tweet
 	switch subset {
@@ -79,6 +82,9 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 		errs.ReturnError(w, r, err)
 		return
 	}
+
+	// For each of the tweets, determine if the authenticated user likes it or not.
+	s.SetAuthLikes(authedUser.ID, tweets)
 
 	// Return the tweets.
 	w.WriteHeader(http.StatusOK)
@@ -239,4 +245,12 @@ func (s *Server) CountAssociations(tweets []domain.Tweet) error {
 		tweets[i].LikesCount = likesCount
 	}
 	return nil
+}
+
+// SetAuthLikes takes a slice of Tweet objects and the ID of the authenticated user.
+// It iterates over the tweets and determines whether the user likes each tweet or not.
+func (s *Server) SetAuthLikes(authedUserId int, tweets []domain.Tweet) {
+	for i, tweet := range tweets {
+		tweets[i].AuthLikes = s.ls.AuthLikes(authedUserId, tweet.ID)
+	}
 }

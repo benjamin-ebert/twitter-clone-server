@@ -121,7 +121,7 @@ func (fv *followValidator) notAlreadyFollowed(follow *domain.Follow) error {
 	return nil
 }
 
-func (fg *followGorm) IsFollowing(authedUserId, userId int) bool {
+func (fg *followGorm) AuthFollows(authedUserId, userId int) bool {
 	err := fg.db.First(&domain.Follow{}, &domain.Follow{FollowerID: authedUserId, FollowedID: userId}).Error
 	if err == nil {
 		return true
