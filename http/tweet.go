@@ -67,10 +67,12 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid tweet subset."))
 	}
 
-	// Get the retrieved tweets' images from the filesystem.
-	if err = s.GetTweetImages(tweets); err != nil {
-		errs.ReturnError(w, r, err)
-		return
+	for i, _ := range tweets {
+		// Get the retrieved tweets' images from the filesystem.
+		if err = s.GetTweetImages(&tweets[i]); err != nil {
+			errs.ReturnError(w, r, err)
+			return
+		}
 	}
 
 	// Count the retrieved tweets' replies, retweets and likes.
@@ -191,13 +193,16 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 // GetTweetImages takes an array of Tweet objects, finds each Tweet's images
 // in the filesystem and attaches the resulting Image array to the Tweet object.
 // TODO: Put that into the crud/image.go package?
-func (s *Server) GetTweetImages(tweets []domain.Tweet) error {
-	for i, tweet := range tweets {
-		images, err := s.is.ByOwner(domain.OwnerTypeTweet, tweet.ID)
-		if err != nil {
+func (s *Server) GetTweetImages(tweet *domain.Tweet) error {
+	images, err := s.is.ByOwner(domain.OwnerTypeTweet, tweet.ID)
+	if err != nil {
+		return err
+	}
+	tweet.Images = images
+	if tweet.RepliesTo != nil {
+		if err = s.GetTweetImages(tweet.RepliesTo); err != nil {
 			return err
 		}
-		tweets[i].Images = images
 	}
 	return nil
 }

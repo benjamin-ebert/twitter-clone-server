@@ -20,7 +20,9 @@ type Tweet struct {
 	User User `json:"user"`
 	Content string `json:"content"`
 
-	RepliesToID int `json:"replies_to_id,omitempty" gorm:"default:null"`
+	// TODO: When to use omitempty?
+	RepliesToID *int `json:"replies_to_id,omitempty" gorm:"default:null"`
+	RepliesTo *Tweet `json:"replies_to,omitempty" gorm:""` // Pointer, otherwise invalid recursive.
 	Replies []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`
 	RepliesCount int `json:"replies_count" gorm:"-"`
 	AuthReplied bool `json:"auth_replied" gorm:"-"`

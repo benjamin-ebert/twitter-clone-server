@@ -74,10 +74,13 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	user.Tweets = originals
 
-	// Get their original tweets' images from the filesystem.
-	if err = s.GetTweetImages(user.Tweets); err != nil {
-		errs.ReturnError(w, r, err)
-		return
+	for i, _ := range user.Tweets {
+		// Get their original tweets' images from the filesystem.
+		if err = s.GetTweetImages(&user.Tweets[i]); err != nil {
+			errs.ReturnError(w, r, err)
+			return
+		}
+		// TODO: Put the CountAss. and SetAuth. stuff in here, similar implementation.
 	}
 
 	// Count their original tweets' replies, retweets and likes.
