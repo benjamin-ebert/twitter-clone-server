@@ -11,6 +11,9 @@ import (
 
 //registerTweetRoutes is a helper for registering all tweet routes.
 func (s *Server) registerTweetRoutes(r *mux.Router) {
+	// Get a specific tweet by id, with its associated user and replies.
+	r.HandleFunc("/tweet/{id:[0-9]+}", s.requireAuth(s.handleGetTweet)).Methods("GET")
+
 	// Get one of the three possible subsets of tweets to be displayed on a user's profile.
 	// The subsets are: all tweets of the user, the user's original tweets (not a retweet or reply),
 	// or tweets of other users that the user has liked.
@@ -67,29 +70,85 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid tweet subset."))
 	}
 
+	// TODO: Add comment.
 	for i, _ := range tweets {
 		// Get the retrieved tweets' images from the filesystem.
 		if err = s.GetTweetImages(&tweets[i]); err != nil {
 			errs.ReturnError(w, r, err)
 			return
 		}
+		// Get the counts of replies, retweets and likes of the tweet.
+		if err = s.CountAssociations(&tweets[i]); err != nil{
+			errs.ReturnError(w, r, err)
+			return
+		}
+		// Determine if the authenticated user likes the tweet or not.
+		s.GetAuthLikesBool(authedUser.ID, &tweets[i])
+		// Determine if the authenticated user has replied to the tweet or not.
+		s.GetAuthRepliedBool(authedUser.ID, &tweets[i])
 	}
-
-	// Count the retrieved tweets' replies, retweets and likes.
-	if err = s.CountAssociations(tweets); err != nil {
-		errs.ReturnError(w, r, err)
-		return
-	}
-
-	// For each of the tweets, determine if the authenticated user likes it or not.
-	s.SetAuthLikes(authedUser.ID, tweets)
-
-	// For each of the tweets, determine if the authenticated user has replied to it or not.
-	s.SetAuthReplied(authedUser.ID, tweets)
 
 	// Return the tweets.
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(tweets); err != nil {
+		errs.LogError(r, err)
+		return
+	}
+}
+
+func (s *Server) handleGetTweet(w http.ResponseWriter, r *http.Request) {
+	// Parse the tweet ID from the url.
+	id, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil {
+		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
+		return
+	}
+
+	// Fetch the tweet from the database.
+	tweet, err := s.ts.ByID(id)
+	if err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+
+	// Get the authenticated user.
+	authedUser := s.getUserFromContext(r.Context())
+
+	// Get the counts of replies, retweets and likes of the tweet.
+	if err = s.CountAssociations(tweet); err != nil{
+		errs.ReturnError(w, r, err)
+		return
+	}
+	// Get the retrieved tweets' images from the filesystem.
+	if err = s.GetTweetImages(tweet); err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+	// Determine if the authenticated user likes the tweet or not.
+	s.GetAuthLikesBool(authedUser.ID, tweet)
+	// Determine if the authenticated user has replied to the tweet or not.
+	s.GetAuthRepliedBool(authedUser.ID, tweet)
+
+	// TODO: Add comment.
+	for i, _ := range tweet.Replies {
+		// Get the retrieved tweets' replies' images from the filesystem.
+		if err = s.GetTweetImages(&tweet.Replies[i]); err != nil {
+			errs.ReturnError(w, r, err)
+			return
+		}
+		// Get the counts of replies, retweets and likes of the tweet's replies.
+		if err = s.CountAssociations(&tweet.Replies[i]); err != nil{
+			errs.ReturnError(w, r, err)
+			return
+		}
+		// Determine if the authenticated user likes the reply or not.
+		s.GetAuthLikesBool(authedUser.ID, &tweet.Replies[i])
+		// Determine if the authenticated user has replied to the tweet or not.
+		s.GetAuthRepliedBool(authedUser.ID, &tweet.Replies[i])
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if err = json.NewEncoder(w).Encode(tweet); err != nil {
 		errs.LogError(r, err)
 		return
 	}
@@ -190,9 +249,10 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetTweetImages takes an array of Tweet objects, finds each Tweet's images
-// in the filesystem and attaches the resulting Image array to the Tweet object.
+// GetTweetImages takes a pointer to a tweet, finds its images
+// in the filesystem and attaches the resulting Image slice to it.
 // TODO: Put that into the crud/image.go package?
+// TODO: Add parameter to pick if the images for related tweets should also be queried?
 func (s *Server) GetTweetImages(tweet *domain.Tweet) error {
 	images, err := s.is.ByOwner(domain.OwnerTypeTweet, tweet.ID)
 	if err != nil {
@@ -207,44 +267,51 @@ func (s *Server) GetTweetImages(tweet *domain.Tweet) error {
 	return nil
 }
 
-// CountAssociations takes a slice of Tweet objects, iterates over it and gets the
-// number of replies, retweets and likes of each tweet.
-// TODO: Put that into the crud/tweet.go?
-func (s *Server) CountAssociations(tweets []domain.Tweet) error {
-	for i, tweet := range tweets {
-		repliesCount, err := s.ts.CountReplies(tweet.ID)
-		if err != nil {
-			return err
-		}
-		tweets[i].RepliesCount = repliesCount
-
-		retweetsCount, err := s.ts.CountRetweets(tweet.ID)
-		if err != nil {
-			return err
-		}
-		tweets[i].RetweetsCount = retweetsCount
-
-		likesCount, err := s.ts.CountLikes(tweet.ID)
-		if err != nil {
-			return err
-		}
-		tweets[i].LikesCount = likesCount
+// CountAssociations a pointer to a tweet, counts its replies, retweets
+// and likes and sets those numbers to the according fields.
+func (s *Server) CountAssociations(tweet *domain.Tweet) error {
+	repliesCount, err := s.ts.CountReplies(tweet.ID)
+	if err != nil {
+		return err
 	}
+	tweet.RepliesCount = repliesCount
+
+	retweetsCount, err := s.ts.CountRetweets(tweet.ID)
+	if err != nil {
+		return err
+	}
+	tweet.RetweetsCount = retweetsCount
+
+	likesCount, err := s.ts.CountLikes(tweet.ID)
+	if err != nil {
+		return err
+	}
+	tweet.LikesCount = likesCount
+
+	if tweet.RepliesTo != nil {
+		if err = s.CountAssociations(tweet.RepliesTo); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-// SetAuthLikes takes a slice of Tweet objects and the ID of the authenticated user.
-// It iterates over the tweets and determines whether the user likes each tweet or not.
-func (s *Server) SetAuthLikes(authedUserId int, tweets []domain.Tweet) {
-	for i, tweet := range tweets {
-		tweets[i].AuthLikes = s.ls.CheckAuthLikes(authedUserId, tweet.ID)
+// GetAuthLikesBool takes a tweet and the ID of the authenticated user, checks if
+// the user likes the tweet or not, and sets the according field on the tweet.
+// TODO: Put that and the other helpers into the crud/tweet.go?
+func (s *Server) GetAuthLikesBool(authUserId int, tweet *domain.Tweet) {
+	tweet.AuthLikes = s.ls.CheckAuthLikes(authUserId, tweet.ID)
+	if tweet.RepliesTo != nil {
+		s.GetAuthLikesBool(authUserId, tweet.RepliesTo)
 	}
 }
 
-// SetAuthReplied takes a slice of Tweet objects and the ID of the authenticated user.
-// It iterates over the tweets and determines whether the user has replied to each tweet or not.
-func (s *Server) SetAuthReplied(authedUserId int, tweets []domain.Tweet) {
-	for i, tweet := range tweets {
-		tweets[i].AuthReplied = s.ts.CheckAuthReplied(authedUserId, tweet.ID)
+// GetAuthRepliedBool takes a tweet and the ID of the authenticated user, checks if
+// the user has replied the tweet or not, and sets the according field on the tweet.
+func (s *Server) GetAuthRepliedBool(authUserId int, tweet *domain.Tweet) {
+	tweet.AuthReplied = s.ts.CheckAuthReplied(authUserId, tweet.ID)
+	if tweet.RepliesTo != nil {
+		s.GetAuthRepliedBool(authUserId, tweet.RepliesTo)
 	}
 }

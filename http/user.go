@@ -80,20 +80,16 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 			errs.ReturnError(w, r, err)
 			return
 		}
-		// TODO: Put the CountAss. and SetAuth. stuff in here, similar implementation.
+		// Get the counts of replies, retweets and likes of the tweet.
+		if err := s.CountAssociations(&user.Tweets[i]); err != nil {
+			errs.ReturnError(w, r, err)
+			return
+		}
+		// Determine if the authenticated user likes the tweet or not.
+		s.GetAuthLikesBool(authedUser.ID, &user.Tweets[i])
+		// Determine if the authenticated user has replied to the tweet or not.
+		s.GetAuthRepliedBool(authedUser.ID, &user.Tweets[i])
 	}
-
-	// Count their original tweets' replies, retweets and likes.
-	if err = s.CountAssociations(user.Tweets); err != nil {
-		errs.ReturnError(w, r, err)
-		return
-	}
-
-	// Check for each tweet if the authed user likes it.
-	s.SetAuthLikes(authedUser.ID, user.Tweets)
-
-	// Check for each tweet if the authed user has replied to it.
-	s.SetAuthReplied(authedUser.ID, user.Tweets)
 
 	// Return the user.
 	w.WriteHeader(http.StatusOK)
@@ -103,6 +99,7 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// TODO: Add comments.
 func (s *Server) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	var user domain.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {

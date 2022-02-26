@@ -110,7 +110,7 @@ func (tv *tweetValidator) idValid(tweet *domain.Tweet) error {
 // repliedToTweetExists makes sure that the Tweet to be replied to actually exists.
 // This check only runs if the incoming Tweet object has a valid ID in its RepliesToID field.
 func (tv *tweetValidator) repliedToTweetExists(tweet *domain.Tweet) error {
-	if *tweet.RepliesToID > 0 { // RepliesToID is a pointer, which needs to be dereferenced here.
+	if tweet.RepliesToID != nil {
 		err := tv.db.First(&domain.Tweet{}, "id = ?", tweet.RepliesToID).Error
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
@@ -152,7 +152,8 @@ func (tv *tweetValidator) userIdValid(tweet *domain.Tweet) error {
 func (tg *tweetGorm) ByID(id int) (*domain.Tweet, error) {
 	var tweet domain.Tweet
 	err := tg.db.
-		Preload("Replies").Preload("Retweets").
+		Preload("User").
+		Preload("Replies.User").
 		First(&tweet, "id = ?", id).
 		Error
 	if err != nil {
@@ -288,8 +289,10 @@ func (tg *tweetGorm) CountLikes(id int) (int, error) {
 
 // Create stores the data from the Tweet object in a new database record.
 func (tg *tweetGorm) Create(tweet *domain.Tweet) error {
-	err := tg.db.Create(tweet).Error
-	if err != nil {
+	if err := tg.db.Create(tweet).Error; err != nil {
+		return err
+	}
+	if err := tg.db.Preload("User").First(&tweet).Error; err != nil {
 		return err
 	}
 	return nil
