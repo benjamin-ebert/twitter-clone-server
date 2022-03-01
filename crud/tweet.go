@@ -51,6 +51,8 @@ func (tv *tweetValidator) Create(tweet *domain.Tweet) error {
 		tv.userIdValid,
 		tv.repliedToTweetExists,
 		tv.retweetedTweetExists,
+		// TODO: notAlreadyRetweeted
+		// TODO: retweetedIsNoRetweet
 		tv.contentMinLength,
 		tv.contentMaxLength)
 	if err != nil {
@@ -82,11 +84,14 @@ func runTweetValFns(tweet *domain.Tweet, fns ...tweetValFn) error {
 // A tweetValFn is any function that takes in a pointer to a domain.Tweet object and returns an error.
 type tweetValFn = func(tweet *domain.Tweet) error
 
-// contentMinLength makes sure that the Tweet's content is not empty.
+// contentMinLength makes sure that the Tweet's content is not empty...
+// ...unless it's a Retweet, in which case empty content is expected.
 func (tv *tweetValidator) contentMinLength(tweet *domain.Tweet) error {
-	contentStripped := strings.ReplaceAll(tweet.Content, " ", "")
-	if contentStripped == "" {
-		return errs.Errorf(errs.EINVALID, "Tweet content must not be empty.")
+	if tweet.RetweetsID == nil {
+		contentStripped := strings.ReplaceAll(tweet.Content, " ", "")
+		if contentStripped == "" {
+			return errs.Errorf(errs.EINVALID, "Tweet content must not be empty.")
+		}
 	}
 	return nil
 }
@@ -126,7 +131,7 @@ func (tv *tweetValidator) repliedToTweetExists(tweet *domain.Tweet) error {
 // retweetedTweetExists makes sure that the Tweet to be retweeted actually exists.
 // This check only runs if the incoming Tweet object has a valid ID in its RetweetsID field.
 func (tv *tweetValidator) retweetedTweetExists(tweet *domain.Tweet) error {
-	if tweet.RetweetsID > 0 {
+	if tweet.RetweetsID != nil {
 		err := tv.tweetGorm.db.First(&domain.Tweet{}, "id = ?", tweet.RetweetsID).Error
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
@@ -166,14 +171,16 @@ func (tg *tweetGorm) ByID(id int) (*domain.Tweet, error) {
 	return &tweet, nil
 }
 
-// TODO: Add comments.
-func (tg *tweetGorm) OriginalsByUserID(userId int) ([]domain.Tweet, error) {
+// TODO: Add comment.
+func (tg *tweetGorm) ByUserID(userId int) ([]domain.Tweet, error) {
 	var tweets []domain.Tweet
 	err := tg.db.
 		Where("user_id = ?", userId).
-		Where("replies_to_id IS NULL").
-		Where("retweets_id IS NULL").
 		Preload("User").
+		Preload("RepliesTo.User").
+		//Preload("RepliesTo.RetweetsTweet.User").
+		Preload("RetweetsTweet.User").
+		Preload("RetweetsTweet.RepliesTo.User").
 		Order("created_at desc").
 		Find(&tweets).Error
 	if err != nil {
@@ -182,12 +189,16 @@ func (tg *tweetGorm) OriginalsByUserID(userId int) ([]domain.Tweet, error) {
 	return tweets, nil
 }
 
-func (tg *tweetGorm) ByUserID(userId int) ([]domain.Tweet, error) {
+// TODO: Rename this to OrignalsAndRetweets and add comments.
+func (tg *tweetGorm) OriginalsByUserID(userId int) ([]domain.Tweet, error) {
 	var tweets []domain.Tweet
 	err := tg.db.
 		Where("user_id = ?", userId).
+		Where("replies_to_id IS NULL").
+		//Where("retweets_id IS NULL").
 		Preload("User").
-		Preload("RepliesTo.User").
+		Preload("RetweetsTweet.User").
+		Preload("RetweetsTweet.RepliesTo.User").
 		Order("created_at desc").
 		Find(&tweets).Error
 	if err != nil {
@@ -239,10 +250,9 @@ func (tg *tweetGorm) LikedTweetsByUserID(userId int) ([]domain.Tweet, error) {
 	return tweets, nil
 }
 
-// TODO: Put this logic into crud/user.go?
-func (tg *tweetGorm) CountByUserID(userId int) (int, error) {
+func (tg *tweetGorm) CountRetweets(id int) (int, error) {
 	var count int64
-	err := tg.db.Model(&domain.Tweet{}).Where("user_id = ?", userId).Count(&count).Error
+	err := tg.db.Model(&domain.Tweet{}).Where("retweets_id = ?", id).Count(&count).Error
 	if err != nil {
 		return 0, err
 	}
@@ -258,9 +268,28 @@ func (tg *tweetGorm) CountReplies(id int) (int, error) {
 	return int(count), nil
 }
 
-// CheckAuthReplied takes a user ID and a tweet ID and returns a boolean expressing whether
-// the given user has replied to the given tweet in the past.
-func (tg *tweetGorm) CheckAuthReplied(userId, tweetId int) bool {
+func (tg *tweetGorm) CountLikes(id int) (int, error) {
+	var count int64
+	err := tg.db.Model(&domain.Like{}).Where("tweet_id = ?", id).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// TODO: Add comment.
+func (tg *tweetGorm) GetAuthRetweet(userId, tweetId int) *domain.Tweet {
+	var retweet domain.Tweet
+	err := tg.db.Where("user_id = ? AND retweets_id = ?", userId, tweetId).First(&retweet).Error
+	if err != nil {
+		return nil
+	}
+	return &retweet
+}
+
+// GetAuthRepliedBool takes a user ID and a tweet ID and returns a boolean expressing whether
+// the given user has replied to the given tweet.
+func (tg *tweetGorm) GetAuthRepliedBool(userId, tweetId int) bool {
 	var count int64
 	tg.db.Model(&domain.Tweet{}).Where("user_id = ? AND replies_to_id = ?", userId, tweetId).Count(&count)
 	if count > 0 {
@@ -269,22 +298,15 @@ func (tg *tweetGorm) CheckAuthReplied(userId, tweetId int) bool {
 	return false
 }
 
-func (tg *tweetGorm) CountRetweets(id int) (int, error) {
+// GetAuthLikesBool takes a user ID and a tweet ID and returns a boolean expressing whether
+// the given user likes the given tweet or not.
+func (tg *tweetGorm) GetAuthLikesBool(userId, tweetId int) bool {
 	var count int64
-	err := tg.db.Model(&domain.Tweet{}).Where("retweets_id = ?", id).Count(&count).Error
-	if err != nil {
-		return 0, err
+	tg.db.Model(&domain.Like{}).Where("user_id = ? AND tweet_id = ?", userId, tweetId).Count(&count)
+	if count > 0 {
+		return true
 	}
-	return int(count), nil
-}
-
-func (tg *tweetGorm) CountLikes(id int) (int, error) {
-	var count int64
-	err := tg.db.Model(&domain.Like{}).Where("tweet_id = ?", id).Count(&count).Error
-	if err != nil {
-		return 0, err
-	}
-	return int(count), nil
+	return false
 }
 
 // Create stores the data from the Tweet object in a new database record.

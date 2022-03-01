@@ -19,9 +19,6 @@ type Follow struct {
 
 // FollowService is a set of methods to manipulate and work with the Follow model.
 type FollowService interface {
-	AuthFollows(authedUserId, userId int) bool
-	CountFollowers(userId int) (int, error)
-	CountFolloweds(userId int) (int, error)
 	Create(follow *Follow) error
 	Delete(follow *Follow) error
 }

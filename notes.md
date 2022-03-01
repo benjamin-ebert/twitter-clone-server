@@ -11,7 +11,10 @@ todo:
 
 - separate json structs for spa?
 - remove password hash / remember hash from user json?
-- fix occasional superfluous response panic
+- fix occasional superfluous response panic - always return something at the end of handlers?
+- add validation for new crud / related methods?
+- make helper tweet queries concurrent? getting images, association counts, auth bools etc.
+- 
 
 - [x] auth system
   - [ ] proper user json fields

@@ -23,7 +23,6 @@ type Like struct {
 // LikeService is a set of methods to manipulate and work with the Like model.
 type LikeService interface {
 	ByUserID(userId int) ([]Like, error)
-	CheckAuthLikes(authedUserId, tweetId int) bool
 	Create(like *Like) error
 	Delete(like *Like) error
 }

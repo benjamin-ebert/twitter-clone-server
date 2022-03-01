@@ -14,6 +14,9 @@ import (
 // If both are null, the Tweet is an "original" Tweet (neither reply nor retweet).
 // - A many-to-many rel. with users, through the "pivot" of Likes.
 // - A one-to-many rel. with images, since up to 4 images can be attached to a Tweet.
+// Originals can have both Replies and Retweets. Replies can also have Replies and Retweets.
+// Retweets can have none. If Retweet gets Replies or Retweets, those will reference the Tweet
+// that the Retweet has retweeted. // TODO: Add validation to ensure this.
 type Tweet struct {
 	ID int `json:"id"`
 	UserID int `json:"user_id" gorm:"notNull;index"`
@@ -22,13 +25,19 @@ type Tweet struct {
 
 	// TODO: When to use omitempty?
 	RepliesToID *int `json:"replies_to_id,omitempty" gorm:"default:null"`
-	RepliesTo *Tweet `json:"replies_to,omitempty" gorm:""` // Pointer, otherwise invalid recursive.
+	//RepliesTo *Tweet `json:"replies_to,omitempty" gorm:""` // Before it was this, which worked but seems wrong.
+	RepliesTo *Tweet `json:"replies_to,omitempty" gorm:"foreignKey:RepliesToID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
 	Replies []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`
 	RepliesCount int `json:"replies_count" gorm:"-"`
 	AuthReplied bool `json:"auth_replied" gorm:"-"`
-	RetweetsID int `json:"retweets_id,omitempty" gorm:"default:null"`
+
+	RetweetsID *int `json:"retweets_id,omitempty" gorm:"default:null"`
+	RetweetsTweet *Tweet `json:"retweets_tweet,omitempty" gorm:"foreignKey:RetweetsID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
 	Retweets []Tweet `json:"retweets" gorm:"foreignKey:RetweetsID"`
 	RetweetsCount int `json:"retweets_count" gorm:"-"`
+	// TODO: Add comment.
+	AuthRetweet *Tweet `json:"auth_retweet,omitempty" gorm:"foreignKey:RetweetsID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
+
 	Likes []Like `json:"likes" gorm:"foreignKey:TweetID"`
 	LikesCount int `json:"likes_count" gorm:"-"`
 	AuthLikes bool `json:"auth_likes" gorm:"-"`
@@ -43,18 +52,19 @@ type Tweet struct {
 type TweetService interface {
 	ByID(id int) (*Tweet, error)
 	ByUserID(userId int) ([]Tweet, error)
+	// TODO: These are Originals AND Retweets
 	OriginalsByUserID(userId int) ([]Tweet, error)
 	ImageTweetsByUserID(userId int) ([]Tweet, error)
 	LikedTweetsByUserID(userId int) ([]Tweet, error)
 
-	// TODO: Put this into user.go?
-	CountByUserID(userId int) (int, error)
 	CountReplies(id int) (int, error)
 	CountRetweets(id int) (int, error)
 	CountLikes(id int) (int, error)
 
-	// TODO: Put this somewhere else?
-	CheckAuthReplied(authedUserId, tweetId int) bool
+	// TODO: Return an error if there is one.
+	GetAuthRepliedBool(authedUserId, tweetId int) bool
+	GetAuthRetweet(authUserId, tweetId int) *Tweet
+	GetAuthLikesBool(authedUserId, tweetId int) bool
 
 	Create(tweet *Tweet) error
 	Delete(tweet *Tweet) error

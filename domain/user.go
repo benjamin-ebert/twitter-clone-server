@@ -66,6 +66,14 @@ type UserService interface {
 	ByID(id int) (*User, error)
 	ByEmail(email string) (*User, error)
 	ByRemember(token string) (*User, error)
+
+	CountTweets(userId int) (int, error)
+	CountFollowers(userId int) (int, error)
+	CountFolloweds(userId int) (int, error)
+
+	// TODO: Return an error if there is one.
+	GetAuthFollowsBool(authedUserId, userId int) bool
+
 	Create(ctx context.Context, user *User) error
 	Update(ctx context.Context, user *User) error
 }

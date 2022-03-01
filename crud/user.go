@@ -334,6 +334,47 @@ func (ug *userGorm) ByRemember(rememberHash string) (*domain.User, error) {
 	return &user, err
 }
 
+// TODO: Add comment.
+func (ug *userGorm) CountTweets(userId int) (int, error) {
+	var count int64
+	err := ug.db.Model(&domain.Tweet{}).Where("user_id = ?", userId).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// CountFollowers takes a user ID and returns the number of users
+// who are following the user with the given ID, or an error.
+func (ug *userGorm) CountFollowers(userId int) (int, error) {
+	var count int64
+	err := ug.db.Model(&domain.Follow{}).Where("followed_id = ?", userId).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// CountFolloweds takes a user ID and returns the number of users
+// who are being followed by the user with the given ID, or an error.
+func (ug *userGorm) CountFolloweds(userId int) (int, error) {
+	var count int64
+	err := ug.db.Model(&domain.Follow{}).Where("follower_id = ?", userId).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// TODO: Add comment.
+func (ug *userGorm) GetAuthFollowsBool(authedUserId, userId int) bool {
+	err := ug.db.First(&domain.Follow{}, &domain.Follow{FollowerID: authedUserId, FollowedID: userId}).Error
+	if err == nil {
+		return true
+	}
+	return false
+}
+
 // Create stores the data from the User object in a new database record.
 func (ug *userGorm) Create(ctx context.Context, user *domain.User) error {
 	err := ug.db.Create(user).Error

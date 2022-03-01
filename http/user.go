@@ -38,33 +38,14 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	// Check if the authed user is following that user.
 	authedUser := s.getUserFromContext(r.Context())
 	if authedUser.ID != userId {
-		user.AuthFollows = s.fs.AuthFollows(authedUser.ID, userId)
+		user.AuthFollows = s.us.GetAuthFollowsBool(authedUser.ID, userId)
 	}
 
-	// TODO: Have a CountAssociations method in crud/user.go, like for tweets?
-	// Get follower count.
-	followerCount, err := s.fs.CountFollowers(user.ID)
-	if err != nil {
+	// TODO: Add comment.
+	if err = s.SetUserAssociationCounts(user); err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
-	user.FollowerCount = followerCount
-
-	// Get followed count.
-	followedCount, err := s.fs.CountFolloweds(user.ID)
-	if err != nil {
-		errs.ReturnError(w, r, err)
-		return
-	}
-	user.FollowedCount = followedCount
-
-	// Get their total tweet count.
-	tweetCount, err := s.ts.CountByUserID(user.ID)
-	if err != nil {
-		errs.ReturnError(w, r, err)
-		return
-	}
-	user.TweetCount = tweetCount
 
 	// Get their original tweets (to populate the default selected tab in the profile view).
 	originals, err := s.ts.OriginalsByUserID(user.ID)
@@ -76,19 +57,17 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 	for i, _ := range user.Tweets {
 		// Get their original tweets' images from the filesystem.
-		if err = s.GetTweetImages(&user.Tweets[i]); err != nil {
+		if err = s.SetTweetImages(&user.Tweets[i]); err != nil {
 			errs.ReturnError(w, r, err)
 			return
 		}
 		// Get the counts of replies, retweets and likes of the tweet.
-		if err := s.CountAssociations(&user.Tweets[i]); err != nil {
+		if err := s.SetTweetAssociationCounts(&user.Tweets[i]); err != nil {
 			errs.ReturnError(w, r, err)
 			return
 		}
-		// Determine if the authenticated user likes the tweet or not.
-		s.GetAuthLikesBool(authedUser.ID, &user.Tweets[i])
-		// Determine if the authenticated user has replied to the tweet or not.
-		s.GetAuthRepliedBool(authedUser.ID, &user.Tweets[i])
+		// Determine if the authenticated user has retweeted / replied to / liked the tweet or not.
+		s.SetTweetUserAssociationBools(authedUser.ID, &user.Tweets[i])
 	}
 
 	// Return the user.
@@ -119,4 +98,29 @@ func (s *Server) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 		errs.LogError(r, err)
 		return
 	}
+}
+
+func (s *Server) SetUserAssociationCounts(user *domain.User) error {
+	// Get follower count.
+	followerCount, err := s.us.CountFollowers(user.ID)
+	if err != nil {
+		return err
+	}
+	user.FollowerCount = followerCount
+
+	// Get followed count.
+	followedCount, err := s.us.CountFolloweds(user.ID)
+	if err != nil {
+		return err
+	}
+	user.FollowedCount = followedCount
+
+	// Get their total tweet count.
+	tweetCount, err := s.us.CountTweets(user.ID)
+	if err != nil {
+		return err
+	}
+	user.TweetCount = tweetCount
+
+	return nil
 }

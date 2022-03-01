@@ -134,17 +134,6 @@ func (lg *likeGorm) ByUserID(userId int) ([]domain.Like, error) {
 	return likes, nil
 }
 
-// CheckAuthLikes takes a user ID and a tweet ID and returns a boolean expressing whether
-// the given user likes the given tweet or not.
-func (lg *likeGorm) CheckAuthLikes(userId, tweetId int) bool {
-	var count int64
-	lg.db.Model(&domain.Like{}).Where("user_id = ? AND tweet_id = ?", userId, tweetId).Count(&count)
-	if count > 0 {
-		return true
-	}
-	return false
-}
-
 // Create stores the data from the Like object in a new database record.
 // On success, it eager-loads (preloads) the tweet relation, so that
 // the json response displays the full data of the liked tweet.
