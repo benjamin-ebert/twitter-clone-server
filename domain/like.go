@@ -11,8 +11,8 @@ import (
 type Like struct {
 	ID int `json:"id"`
 	UserID int `json:"user_id" gorm:"notNull;index"`
-	TweetID int `json:"-"`
-	Tweet Tweet `json:"tweet"`
+	TweetID int `json:"tweet_id"`
+	Tweet Tweet `json:"tweet"` // TODO: Do I need this?
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -22,6 +22,7 @@ type Like struct {
 
 // LikeService is a set of methods to manipulate and work with the Like model.
 type LikeService interface {
+	ByID(id int) (*Like, error)
 	ByUserID(userId int) ([]Like, error)
 	Create(like *Like) error
 	Delete(like *Like) error

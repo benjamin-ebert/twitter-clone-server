@@ -121,6 +121,20 @@ func (lv *likeValidator) userIdValid(like *domain.Like) error {
 	return nil
 }
 
+// TODO: Add comment.
+func (lg *likeGorm) ByID(id int) (*domain.Like, error) {
+	var like domain.Like
+	err := lg.db.First(&like, "id = ?", id).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errs.Errorf(errs.ENOTFOUND, "The like does not exist")
+		} else {
+			return nil, err
+		}
+	}
+	return &like, nil
+}
+
 // ByUserID retrieves all likes of a user, along with the Tweet belonging to each Like.
 func (lg *likeGorm) ByUserID(userId int) ([]domain.Like, error) {
 	var likes []domain.Like

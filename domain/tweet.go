@@ -25,7 +25,6 @@ type Tweet struct {
 
 	// TODO: When to use omitempty?
 	RepliesToID *int `json:"replies_to_id,omitempty" gorm:"default:null"`
-	//RepliesTo *Tweet `json:"replies_to,omitempty" gorm:""` // Before it was this, which worked but seems wrong.
 	RepliesTo *Tweet `json:"replies_to,omitempty" gorm:"foreignKey:RepliesToID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
 	Replies []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`
 	RepliesCount int `json:"replies_count" gorm:"-"`
@@ -35,12 +34,12 @@ type Tweet struct {
 	RetweetsTweet *Tweet `json:"retweets_tweet,omitempty" gorm:"foreignKey:RetweetsID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
 	Retweets []Tweet `json:"retweets" gorm:"foreignKey:RetweetsID"`
 	RetweetsCount int `json:"retweets_count" gorm:"-"`
-	// TODO: Add comment.
 	AuthRetweet *Tweet `json:"auth_retweet,omitempty" gorm:"foreignKey:RetweetsID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
 
 	Likes []Like `json:"likes" gorm:"foreignKey:TweetID"`
 	LikesCount int `json:"likes_count" gorm:"-"`
-	AuthLikes bool `json:"auth_likes" gorm:"-"`
+	AuthLike *Like `json:"auth_like,omitempty" gorm:"foreignKey:TweetID;references:ID"`
+
 	Images []Image `json:"images" gorm:"-"`
 
 	CreatedAt time.Time `json:"created_at"`
@@ -52,7 +51,7 @@ type Tweet struct {
 type TweetService interface {
 	ByID(id int) (*Tweet, error)
 	ByUserID(userId int) ([]Tweet, error)
-	// TODO: These are Originals AND Retweets
+	// TODO: Rename, these are Originals AND Retweets.
 	OriginalsByUserID(userId int) ([]Tweet, error)
 	ImageTweetsByUserID(userId int) ([]Tweet, error)
 	LikedTweetsByUserID(userId int) ([]Tweet, error)
@@ -61,10 +60,10 @@ type TweetService interface {
 	CountRetweets(id int) (int, error)
 	CountLikes(id int) (int, error)
 
-	// TODO: Return an error if there is one.
+	// TODO: Return an error if there is one?
 	GetAuthRepliedBool(authedUserId, tweetId int) bool
 	GetAuthRetweet(authUserId, tweetId int) *Tweet
-	GetAuthLikesBool(authedUserId, tweetId int) bool
+	GetAuthLike(authUserId, tweetId int) *Like
 
 	Create(tweet *Tweet) error
 	Delete(tweet *Tweet) error

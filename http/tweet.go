@@ -307,10 +307,10 @@ func (s *Server) SetTweetAssociationCounts(tweet *domain.Tweet) error {
 // to a tweet. Then checks if the user likes / has replied / retweeted the tweet, and sets the
 // boolean value for the respective field on the tweet. If the tweet is a reply or a retweet,
 // it recursively does the same to the parent tweet.
-// Update comment.
+// TODO: Update comment, Rename method.
 func (s *Server) SetTweetUserAssociationBools(authUserId int, tweet *domain.Tweet) {
 	tweet.AuthReplied = s.ts.GetAuthRepliedBool(authUserId, tweet.ID)
-	tweet.AuthLikes = s.ts.GetAuthLikesBool(authUserId, tweet.ID)
+	tweet.AuthLike = s.ts.GetAuthLike(authUserId, tweet.ID)
 	tweet.AuthRetweet = s.ts.GetAuthRetweet(authUserId, tweet.ID)
 
 	if tweet.RepliesTo != nil {

@@ -51,7 +51,7 @@ func (tv *tweetValidator) Create(tweet *domain.Tweet) error {
 		tv.userIdValid,
 		tv.repliedToTweetExists,
 		tv.retweetedTweetExists,
-		// TODO: notAlreadyRetweeted
+		// TODO: notAlreadyRetweeted... OR retweetValid, checking for these two an the one above.
 		// TODO: retweetedIsNoRetweet
 		tv.contentMinLength,
 		tv.contentMaxLength)
@@ -135,7 +135,7 @@ func (tv *tweetValidator) retweetedTweetExists(tweet *domain.Tweet) error {
 		err := tv.tweetGorm.db.First(&domain.Tweet{}, "id = ?", tweet.RetweetsID).Error
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
-				return errs.Errorf(errs.ENOTFOUND, "Tweet retweeted tweet does not exist.")
+				return errs.Errorf(errs.ENOTFOUND, "The retweeted tweet does not exist.")
 			} else {
 				return err
 			}
@@ -277,16 +277,6 @@ func (tg *tweetGorm) CountLikes(id int) (int, error) {
 	return int(count), nil
 }
 
-// TODO: Add comment.
-func (tg *tweetGorm) GetAuthRetweet(userId, tweetId int) *domain.Tweet {
-	var retweet domain.Tweet
-	err := tg.db.Where("user_id = ? AND retweets_id = ?", userId, tweetId).First(&retweet).Error
-	if err != nil {
-		return nil
-	}
-	return &retweet
-}
-
 // GetAuthRepliedBool takes a user ID and a tweet ID and returns a boolean expressing whether
 // the given user has replied to the given tweet.
 func (tg *tweetGorm) GetAuthRepliedBool(userId, tweetId int) bool {
@@ -298,15 +288,23 @@ func (tg *tweetGorm) GetAuthRepliedBool(userId, tweetId int) bool {
 	return false
 }
 
-// GetAuthLikesBool takes a user ID and a tweet ID and returns a boolean expressing whether
-// the given user likes the given tweet or not.
-func (tg *tweetGorm) GetAuthLikesBool(userId, tweetId int) bool {
-	var count int64
-	tg.db.Model(&domain.Like{}).Where("user_id = ? AND tweet_id = ?", userId, tweetId).Count(&count)
-	if count > 0 {
-		return true
+// TODO: Add comment.
+func (tg *tweetGorm) GetAuthRetweet(userId, tweetId int) *domain.Tweet {
+	var retweet domain.Tweet
+	err := tg.db.Where("user_id = ? AND retweets_id = ?", userId, tweetId).First(&retweet).Error
+	if err != nil {
+		return nil
 	}
-	return false
+	return &retweet
+}
+
+func (tg *tweetGorm) GetAuthLike(userId, tweetId int) *domain.Like {
+	var like domain.Like
+	err := tg.db.Where("user_id = ? AND tweet_id = ?", userId, tweetId).First(&like).Error
+	if err != nil {
+		return nil
+	}
+	return &like
 }
 
 // Create stores the data from the Tweet object in a new database record.
