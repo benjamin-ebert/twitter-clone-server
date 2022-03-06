@@ -43,7 +43,7 @@ func (s *Server) handleGetFeed(w http.ResponseWriter, r *http.Request) {
 
 	// Get the user's feed.
 	var feed []domain.Tweet
-	feed, err = s.ts.AllWithOffset(offset)
+	feed, err = s.ts.Index(offset)
 	if err != nil {
 		errs.ReturnError(w, r, err)
 		return
@@ -78,13 +78,6 @@ func (s *Server) handleGetFeed(w http.ResponseWriter, r *http.Request) {
 // "all" gets all tweets created by the user. "with_images" gets the user's tweets that contain images.
 // "liked" gets all the tweets the user has liked in the past (usually created by other users).
 func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
-	// Parse the requested tweet sub set from the url. Return error if parameter invalid.
-	subset := mux.Vars(r)["subset"]
-	if subset != "all" && subset != "with_images" && subset != "liked" {
-		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid tweet sub set, must be 'all', 'with_images' or 'liked'."))
-		return
-	}
-
 	// Parse the user id from the url.
 	userId, err := strconv.Atoi(mux.Vars(r)["user_id"])
 	if userId <= 0 || err != nil {
@@ -96,6 +89,7 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 	authedUser := s.getUserFromContext(r.Context())
 
 	// Get the tweets according to the value of the subset url parameter.
+	subset := mux.Vars(r)["subset"]
 	var tweets []domain.Tweet
 	switch subset {
 	case "all":

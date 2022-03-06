@@ -154,7 +154,7 @@ func (tv *tweetValidator) userIdValid(tweet *domain.Tweet) error {
 
 // TODO: Add comment.
 // TODO: Make this more relevant to the user?
-func (tg *tweetGorm) AllWithOffset(offset int) ([]domain.Tweet, error) {
+func (tg *tweetGorm) Index(offset int) ([]domain.Tweet, error) {
 	var feed []domain.Tweet
 	// TODO: Limit? Random order? Dynamic offset for faster initial load and endless scroll?
 	err := tg.db.
