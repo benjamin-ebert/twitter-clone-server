@@ -51,6 +51,8 @@ type Tweet struct {
 type TweetService interface {
 	ByID(id int) (*Tweet, error)
 	ByUserID(userId int) ([]Tweet, error)
+	AllWithOffset(offset int) ([]Tweet, error)
+
 	// TODO: Rename, these are Originals AND Retweets.
 	OriginalsByUserID(userId int) ([]Tweet, error)
 	ImageTweetsByUserID(userId int) ([]Tweet, error)

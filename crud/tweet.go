@@ -152,6 +152,26 @@ func (tv *tweetValidator) userIdValid(tweet *domain.Tweet) error {
 	return nil
 }
 
+// TODO: Add comment.
+// TODO: Make this more relevant to the user?
+func (tg *tweetGorm) AllWithOffset(offset int) ([]domain.Tweet, error) {
+	var feed []domain.Tweet
+	// TODO: Limit? Random order? Dynamic offset for faster initial load and endless scroll?
+	err := tg.db.
+		Preload("User").
+		Preload("RepliesTo.User").
+		Preload("RetweetsTweet.User").
+		Preload("RetweetsTweet.RepliesTo.User").
+		Order("created_at desc").
+		Offset(offset).
+		Limit(10).
+		Find(&feed).Error
+	if err != nil {
+		return nil, err
+	}
+	return feed, nil
+}
+
 // ByID retrieves a single Tweet by ID, along with its associated Replies and Retweets.
 // If the record doesn't exist, it returns errs.ENOTFOUND. Otherwise, it returns nil.
 func (tg *tweetGorm) ByID(id int) (*domain.Tweet, error) {
@@ -207,6 +227,7 @@ func (tg *tweetGorm) OriginalsByUserID(userId int) ([]domain.Tweet, error) {
 	return tweets, nil
 }
 
+// TODO: Add comment.
 func (tg *tweetGorm) ImageTweetsByUserID(userId int) ([]domain.Tweet, error) {
 	files, err := ioutil.ReadDir(domain.ImagesBaseDir + "/" + domain.OwnerTypeTweet + "/")
 	if err != nil {
@@ -235,6 +256,7 @@ func (tg *tweetGorm) ImageTweetsByUserID(userId int) ([]domain.Tweet, error) {
 	return tweets, nil
 }
 
+// TODO: Add comment.
 func (tg *tweetGorm) LikedTweetsByUserID(userId int) ([]domain.Tweet, error) {
 	var tweets []domain.Tweet
 	err := tg.db.
@@ -250,6 +272,7 @@ func (tg *tweetGorm) LikedTweetsByUserID(userId int) ([]domain.Tweet, error) {
 	return tweets, nil
 }
 
+// TODO: Add comment.
 func (tg *tweetGorm) CountRetweets(id int) (int, error) {
 	var count int64
 	err := tg.db.Model(&domain.Tweet{}).Where("retweets_id = ?", id).Count(&count).Error
@@ -259,6 +282,7 @@ func (tg *tweetGorm) CountRetweets(id int) (int, error) {
 	return int(count), nil
 }
 
+// TODO: Add comment.
 func (tg *tweetGorm) CountReplies(id int) (int, error) {
 	var count int64
 	err := tg.db.Model(&domain.Tweet{}).Where("replies_to_id = ?", id).Count(&count).Error
@@ -268,6 +292,7 @@ func (tg *tweetGorm) CountReplies(id int) (int, error) {
 	return int(count), nil
 }
 
+// TODO: Add comment.
 func (tg *tweetGorm) CountLikes(id int) (int, error) {
 	var count int64
 	err := tg.db.Model(&domain.Like{}).Where("tweet_id = ?", id).Count(&count).Error
@@ -298,6 +323,7 @@ func (tg *tweetGorm) GetAuthRetweet(userId, tweetId int) *domain.Tweet {
 	return &retweet
 }
 
+// TODO: Add comment.
 func (tg *tweetGorm) GetAuthLike(userId, tweetId int) *domain.Like {
 	var like domain.Like
 	err := tg.db.Where("user_id = ? AND tweet_id = ?", userId, tweetId).First(&like).Error

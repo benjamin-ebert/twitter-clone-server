@@ -11,6 +11,9 @@ import (
 
 //registerTweetRoutes is a helper for registering all tweet routes.
 func (s *Server) registerTweetRoutes(r *mux.Router) {
+	// Get the authed user's feed.
+	r.HandleFunc("/feed/{offset:[0-9]+}", s.requireAuth(s.handleGetFeed)).Methods("GET")
+
 	// Get a specific tweet by id, with its associated user and replies.
 	r.HandleFunc("/tweet/{id:[0-9]+}", s.requireAuth(s.handleGetTweet)).Methods("GET")
 
@@ -27,6 +30,49 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 	r.HandleFunc("/tweet/delete/{id:[0-9]+}", s.requireAuth(s.handleDeleteTweet)).Methods("DELETE")
 }
 
+func (s *Server) handleGetFeed(w http.ResponseWriter, r *http.Request) {
+	// Parse the offset from the url.
+	offset, err := strconv.Atoi(mux.Vars(r)["offset"])
+	if offset < 0 || err != nil {
+		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid offset value."))
+		return
+	}
+
+	// Get the authenticated user.
+	authedUser := s.getUserFromContext(r.Context())
+
+	// Get the user's feed.
+	var feed []domain.Tweet
+	feed, err = s.ts.AllWithOffset(offset)
+	if err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+
+	// Loop over the tweets in the feed and get their images and relevant relations.
+	for i, _ := range feed {
+		// Get the retrieved feed' images from the filesystem.
+		if err = s.SetTweetImages(&feed[i]); err != nil {
+			errs.ReturnError(w, r, err)
+			return
+		}
+		// Get the counts of replies, retweets and likes of the tweet.
+		if err = s.SetTweetAssociationCounts(&feed[i]); err != nil{
+			errs.ReturnError(w, r, err)
+			return
+		}
+		// Determine if the authenticated user has retweeted / replied to / liked the tweet or not.
+		s.SetTweetUserAssociationBools(authedUser.ID, &feed[i])
+	}
+
+	// Return the feed.
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(feed); err != nil {
+		errs.LogError(r, err)
+		return
+	}
+}
+
 // handleGetTweets gets one of three possible subsets of tweets to be displayed on a user's profile,
 // depending on the value of the subset url parameter. Possible values are "all", "with_images" and "liked".
 // "all" gets all tweets created by the user. "with_images" gets the user's tweets that contain images.
@@ -41,7 +87,7 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 
 	// Parse the user id from the url.
 	userId, err := strconv.Atoi(mux.Vars(r)["user_id"])
-	if userId <=0 || err != nil{
+	if userId <= 0 || err != nil {
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
 		return
 	}
