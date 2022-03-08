@@ -334,6 +334,18 @@ func (ug *userGorm) ByRemember(rememberHash string) (*domain.User, error) {
 	return &user, err
 }
 
+// Search takes a search term, looks for users whose name or handle are similar to the term,
+// and returns those users, populating only the fields needed for proper search results display.
+func (ug *userGorm) Search(searchTerm string) []domain.User {
+	var users []domain.User
+	query := "SELECT id, name, handle, bio, avatar FROM users " +
+		"WHERE (name ILIKE '%"+ searchTerm + "%' " +
+		"OR handle ILIKE '%" + searchTerm + "%') " +
+		"AND deleted_at IS NULL"
+	ug.db.Raw(query).Scan(&users)
+	return users
+}
+
 // TODO: Add comment.
 func (ug *userGorm) CountTweets(userId int) (int, error) {
 	var count int64

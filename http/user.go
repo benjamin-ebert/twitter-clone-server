@@ -16,6 +16,23 @@ func (s *Server) registerUserRoutes(r *mux.Router) {
 	// Update the user's data.
 	// TODO: Put this into auth.go?
 	r.HandleFunc("/profile/update", s.requireAuth(s.handleUpdateProfile)).Methods("PUT")
+
+	// Search for users.
+	r.HandleFunc("/search/profiles/{term}", s.requireAuth(s.handleSearchProfiles)).Methods("GET")
+}
+
+// handleSearchProfiles handles the route "GET /search/profiles/{term}".
+// It parses the search term from the url, runs a user search with it, and returns
+// the resulting slice of users (or null if nothing was found).
+func (s *Server) handleSearchProfiles(w http.ResponseWriter, r *http.Request) {
+	var profiles []domain.User
+	searchTerm := mux.Vars(r)["term"]
+	profiles = s.us.Search(searchTerm)
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(profiles); err != nil {
+		errs.LogError(r, err)
+		return
+	}
 }
 
 // handleGetProfile handles the route "GET /profile".
