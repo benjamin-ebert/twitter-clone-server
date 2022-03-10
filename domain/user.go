@@ -25,7 +25,7 @@ type User struct {
 	Bio string `json:"bio"` // TODO: Maxlength here or in validation?
 	Avatar string `json:"avatar"`
 	Header string `json:"header"`
-	AuthFollows bool `json:"auth_follows" gorm:"-"`
+	AuthFollow *Follow `json:"auth_follow,omitempty" gorm:"foreignKey:FollowedID;references:ID"`
 
 	Password string `json:"password" gorm:"-"`
 	PasswordHash string `json:"password_hash"`
@@ -74,7 +74,7 @@ type UserService interface {
 	CountFolloweds(userId int) (int, error)
 
 	// TODO: Return an error if there is one?
-	GetAuthFollowsBool(authedUserId, userId int) bool
+	GetAuthFollow(authUserId, userId int) *Follow
 
 	Create(ctx context.Context, user *User) error
 	Update(ctx context.Context, user *User) error

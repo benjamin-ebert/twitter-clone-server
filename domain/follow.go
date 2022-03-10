@@ -9,9 +9,9 @@ import "time"
 // The FollowedID is the ID of the user that is being followed.
 type Follow struct {
 	ID int `json:"id"`
-	FollowerID int `json:"-" gorm:"notNull;index"`
+	FollowerID int `json:"follower_id" gorm:"notNull;index"`
 	Follower User `json:"follower"`
-	FollowedID int `json:"-" gorm:"notNull;index"`
+	FollowedID int `json:"followed_id" gorm:"notNull;index"`
 	Followed User `json:"followed"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -19,6 +19,8 @@ type Follow struct {
 
 // FollowService is a set of methods to manipulate and work with the Follow model.
 type FollowService interface {
+	ByID(id int) (*Follow, error)
 	Create(follow *Follow) error
 	Delete(follow *Follow) error
+	SuggestFollows(userId int) []User
 }

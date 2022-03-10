@@ -55,7 +55,7 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	// Check if the authed user is following that user.
 	authedUser := s.getUserFromContext(r.Context())
 	if authedUser.ID != userId {
-		user.AuthFollows = s.us.GetAuthFollowsBool(authedUser.ID, userId)
+		user.AuthFollow = s.us.GetAuthFollow(authedUser.ID, userId)
 	}
 
 	// TODO: Add comment.
@@ -64,6 +64,7 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: Don't do this here. Get the originals in a separate query.
 	// Get their original tweets (to populate the default selected tab in the profile view).
 	originals, err := s.ts.OriginalsByUserID(user.ID)
 	if err != nil {

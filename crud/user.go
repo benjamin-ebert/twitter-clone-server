@@ -336,6 +336,7 @@ func (ug *userGorm) ByRemember(rememberHash string) (*domain.User, error) {
 
 // Search takes a search term, looks for users whose name or handle are similar to the term,
 // and returns those users, populating only the fields needed for proper search results display.
+// TODO: Return nil in case of error.
 func (ug *userGorm) Search(searchTerm string) []domain.User {
 	var users []domain.User
 	query := "SELECT id, name, handle, bio, avatar FROM users " +
@@ -379,12 +380,13 @@ func (ug *userGorm) CountFolloweds(userId int) (int, error) {
 }
 
 // TODO: Add comment.
-func (ug *userGorm) GetAuthFollowsBool(authedUserId, userId int) bool {
-	err := ug.db.First(&domain.Follow{}, &domain.Follow{FollowerID: authedUserId, FollowedID: userId}).Error
-	if err == nil {
-		return true
+func (ug *userGorm) GetAuthFollow(authUserId, userId int) *domain.Follow {
+	var follow domain.Follow
+	err := ug.db.Where("follower_id = ? AND followed_id = ?", authUserId, userId).First(&follow).Error
+	if err != nil {
+		return nil
 	}
-	return false
+	return &follow
 }
 
 // Create stores the data from the User object in a new database record.

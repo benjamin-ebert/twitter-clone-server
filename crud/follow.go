@@ -2,6 +2,7 @@ package crud
 
 import (
 	"gorm.io/gorm"
+	"strconv"
 	"wtfTwitter/domain"
 	"wtfTwitter/errs"
 )
@@ -121,6 +122,20 @@ func (fv *followValidator) notAlreadyFollowed(follow *domain.Follow) error {
 	return nil
 }
 
+// TODO: Add comment.
+func (fg *followGorm) ByID(id int) (*domain.Follow, error) {
+	var follow domain.Follow
+	err := fg.db.First(&follow, "id = ?", id).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errs.Errorf(errs.ENOTFOUND, "The follow does not exist")
+		} else {
+			return nil, err
+		}
+	}
+	return &follow, nil
+}
+
 // Create stores the data from the Follow object in a new database record.
 // On success, it eager-loads (preloads) the follower and followed user relations,
 // so that the json response displays the full user data of each.
@@ -140,4 +155,18 @@ func (fg *followGorm) Delete(follow *domain.Follow) error {
 		return err
 	}
 	return nil
+}
+
+// SuggestFollows takes the id of the authenticated user and returns 10 random users
+// the authed user isn't yet following (excluding deleted users and the authed one).
+// TODO: Return nil in case of error.
+func (fg *followGorm) SuggestFollows(userId int) []domain.User {
+	var suggestions []domain.User
+	query :=
+		"SELECT id, name, handle, avatar FROM users WHERE id NOT IN" +
+		"(SELECT followed_id FROM follows WHERE follower_id = " + strconv.Itoa(userId) + ") " +
+		"AND id != " + strconv.Itoa(userId) + " AND deleted_at IS NULL " +
+		"ORDER BY RANDOM () LIMIT 10"
+	fg.db.Raw(query).Scan(&suggestions)
+	return suggestions
 }

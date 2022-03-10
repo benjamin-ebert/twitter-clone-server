@@ -11,17 +11,18 @@ import (
 
 // registerLikeRoutes is a helper for registering all Like routes.
 func (s *Server) registerLikeRoutes(r *mux.Router) {
-	// Create a new like for a tweet (Like a tweet).
+	// Create a new like for a tweet.
 	r.HandleFunc("/like", s.requireAuth(s.handleCreateLike)).Methods("POST")
 
-	// Delete an existing like of a tweet (Unlike a tweet).
+	// Delete an existing like of a tweet.
 	r.HandleFunc("/like/delete/{id:[0-9]+}", s.requireAuth(s.handleDeleteLike)).Methods("DELETE")
 }
 
-// handleCreateLike handles the route "POST /like/:tweet_id".
-// It reads the tweet ID from the url and creates a new Like record in the database.
+// handleCreateLike handles the route "POST /like".
+// It reads the tweet_id from the json body, gets the authed user's id from context,
+// sets their id as the user_id, and creates a new Like record in the database.
 func (s *Server) handleCreateLike(w http.ResponseWriter, r *http.Request) {
-	// Parse the request's json body into a Like object.
+	// Parse the request's json body into a Like object. It only the contains the tweet_id.
 	var like domain.Like
 	if err := json.NewDecoder(r.Body).Decode(&like); err != nil {
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid json body."))
@@ -47,9 +48,8 @@ func (s *Server) handleCreateLike(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleDeleteLike handles the route "POST /unlike/:tweet_id".
-// It reads the tweet ID from the url and permanently deletes the respective like record from the database.
-// TODO: Delete by ID, like tweets, then update comment.
+// handleDeleteLike handles the route "DELETE /like/delete/:id".
+// It reads id from the url and permanently deletes the respective like record from the database.
 func (s *Server) handleDeleteLike(w http.ResponseWriter, r *http.Request) {
 	// Parse the like ID from the url.
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
@@ -59,7 +59,7 @@ func (s *Server) handleDeleteLike(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch the like from the database.
-	like, err := s.ls.ByID(id) // TODO: Implement this.
+	like, err := s.ls.ByID(id)
 	if err != nil {
 		errs.ReturnError(w, r, err)
 		return
