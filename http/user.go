@@ -40,7 +40,7 @@ func (s *Server) handleSearchProfiles(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	// Parse the User ID from the url.
 	userId, err := strconv.Atoi(mux.Vars(r)["user_id"])
-	if userId <=0 || err != nil{
+	if userId <= 0 || err != nil {
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
 		return
 	}
@@ -58,34 +58,10 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		user.AuthFollow = s.us.GetAuthFollow(authedUser.ID, userId)
 	}
 
-	// TODO: Add comment.
+	// Get the number of tweets, followers and followeds of the user.
 	if err = s.SetUserAssociationCounts(user); err != nil {
 		errs.ReturnError(w, r, err)
 		return
-	}
-
-	// TODO: Don't do this here. Get the originals in a separate query.
-	// Get their original tweets (to populate the default selected tab in the profile view).
-	originals, err := s.ts.OriginalsByUserID(user.ID)
-	if err != nil {
-		errs.ReturnError(w, r, err)
-		return
-	}
-	user.Tweets = originals
-
-	for i, _ := range user.Tweets {
-		// Get their original tweets' images from the filesystem.
-		if err = s.SetTweetImages(&user.Tweets[i]); err != nil {
-			errs.ReturnError(w, r, err)
-			return
-		}
-		// Get the counts of replies, retweets and likes of the tweet.
-		if err := s.SetTweetAssociationCounts(&user.Tweets[i]); err != nil {
-			errs.ReturnError(w, r, err)
-			return
-		}
-		// Determine if the authenticated user has retweeted / replied to / liked the tweet or not.
-		s.SetTweetUserAssociationBools(authedUser.ID, &user.Tweets[i])
 	}
 
 	// Return the user.
@@ -106,6 +82,12 @@ func (s *Server) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 	err := s.us.Update(r.Context(), &user)
 	if err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+
+	// Get the number of tweets, followers and followeds of the user.
+	if err = s.SetUserAssociationCounts(&user); err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}

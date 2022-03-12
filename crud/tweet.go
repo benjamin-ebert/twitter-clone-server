@@ -192,7 +192,7 @@ func (tg *tweetGorm) ByID(id int) (*domain.Tweet, error) {
 }
 
 // TODO: Add comment.
-func (tg *tweetGorm) ByUserID(userId int) ([]domain.Tweet, error) {
+func (tg *tweetGorm) ByUserID(userId, offset int) ([]domain.Tweet, error) {
 	var tweets []domain.Tweet
 	err := tg.db.
 		Where("user_id = ?", userId).
@@ -202,6 +202,8 @@ func (tg *tweetGorm) ByUserID(userId int) ([]domain.Tweet, error) {
 		Preload("RetweetsTweet.User").
 		Preload("RetweetsTweet.RepliesTo.User").
 		Order("created_at desc").
+		Offset(offset).
+		Limit(10).
 		Find(&tweets).Error
 	if err != nil {
 		return nil, err
@@ -210,7 +212,7 @@ func (tg *tweetGorm) ByUserID(userId int) ([]domain.Tweet, error) {
 }
 
 // TODO: Rename this to OrignalsAndRetweets and add comments.
-func (tg *tweetGorm) OriginalsByUserID(userId int) ([]domain.Tweet, error) {
+func (tg *tweetGorm) OriginalsByUserID(userId, offset int) ([]domain.Tweet, error) {
 	var tweets []domain.Tweet
 	err := tg.db.
 		Where("user_id = ?", userId).
@@ -220,6 +222,8 @@ func (tg *tweetGorm) OriginalsByUserID(userId int) ([]domain.Tweet, error) {
 		Preload("RetweetsTweet.User").
 		Preload("RetweetsTweet.RepliesTo.User").
 		Order("created_at desc").
+		Offset(offset).
+		Limit(10).
 		Find(&tweets).Error
 	if err != nil {
 		return nil, err
@@ -228,7 +232,7 @@ func (tg *tweetGorm) OriginalsByUserID(userId int) ([]domain.Tweet, error) {
 }
 
 // TODO: Add comment.
-func (tg *tweetGorm) ImageTweetsByUserID(userId int) ([]domain.Tweet, error) {
+func (tg *tweetGorm) ImageTweetsByUserID(userId, offset int) ([]domain.Tweet, error) {
 	files, err := ioutil.ReadDir(domain.ImagesBaseDir + "/" + domain.OwnerTypeTweet + "/")
 	if err != nil {
 		return nil, err
@@ -249,6 +253,8 @@ func (tg *tweetGorm) ImageTweetsByUserID(userId int) ([]domain.Tweet, error) {
 		Where("id IN ?", imageTweetIds).
 		Preload("User").
 		Order("created_at desc").
+		Offset(offset).
+		Limit(10).
 		Find(&tweets).Error
 	if err != nil {
 		return nil, err
@@ -257,7 +263,7 @@ func (tg *tweetGorm) ImageTweetsByUserID(userId int) ([]domain.Tweet, error) {
 }
 
 // TODO: Add comment.
-func (tg *tweetGorm) LikedTweetsByUserID(userId int) ([]domain.Tweet, error) {
+func (tg *tweetGorm) LikedTweetsByUserID(userId, offset int) ([]domain.Tweet, error) {
 	var tweets []domain.Tweet
 	err := tg.db.
 		Joins("JOIN likes ON likes.tweet_id=tweets.id").
@@ -265,6 +271,8 @@ func (tg *tweetGorm) LikedTweetsByUserID(userId int) ([]domain.Tweet, error) {
 		Where("likes.deleted_at IS NULL").
 		Preload("User").
 		Order("created_at desc").
+		Offset(offset).
+		Limit(10).
 		Find(&tweets).Error
 	if err != nil {
 		return nil, err

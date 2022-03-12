@@ -20,7 +20,7 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 	// Get one of the three possible subsets of tweets to be displayed on a user's profile.
 	// The subsets are: all tweets of the user, the user's original tweets (not a retweet or reply),
 	// or tweets of other users that the user has liked.
-	r.HandleFunc("/tweets/{subset}/{user_id:[0-9]+}", s.requireAuth(s.handleGetTweets)).Methods("GET")
+	r.HandleFunc("/tweets/{subset}/{user_id:[0-9]+}/{offset}", s.requireAuth(s.handleGetTweets)).Methods("GET")
 
 	// Create a new tweet / retweet / reply. Which one it is, is decided implicitly based on
 	// the value of tweet's retweets_id / replies_to_id fields.
@@ -30,6 +30,11 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 	r.HandleFunc("/tweet/delete/{id:[0-9]+}", s.requireAuth(s.handleDeleteTweet)).Methods("DELETE")
 }
 
+// handleGetFeed loads a limited number of tweets to be displayed on the home screen.
+// The offset parameter determines how many tweets to skip in the database query.
+// The client sets that value based on how many tweets are already being displayed
+// and defaults to 0 on initial load. It calls handleGetFeed whenever the user
+// reaches the bottom of the scrollable feed area, so it's an "infinite scroll" experience.
 func (s *Server) handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	// Parse the offset from the url.
 	offset, err := strconv.Atoi(mux.Vars(r)["offset"])
@@ -57,7 +62,7 @@ func (s *Server) handleGetFeed(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Get the counts of replies, retweets and likes of the tweet.
-		if err = s.SetTweetAssociationCounts(&feed[i]); err != nil{
+		if err = s.SetTweetAssociationCounts(&feed[i]); err != nil {
 			errs.ReturnError(w, r, err)
 			return
 		}
@@ -85,6 +90,13 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse the offset from the url.
+	offset, err := strconv.Atoi(mux.Vars(r)["offset"])
+	if offset < 0 || err != nil {
+		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid offset value."))
+		return
+	}
+
 	// Get the authenticated user.
 	authedUser := s.getUserFromContext(r.Context())
 
@@ -92,18 +104,23 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 	subset := mux.Vars(r)["subset"]
 	var tweets []domain.Tweet
 	switch subset {
+	case "original":
+		tweets, err = s.ts.OriginalsByUserID(userId, offset)
+		if err != nil {
+			errs.ReturnError(w, r, err)
+		}
 	case "all":
-		tweets, err = s.ts.ByUserID(userId)
+		tweets, err = s.ts.ByUserID(userId, offset)
 		if err != nil {
 			errs.ReturnError(w, r, err)
 		}
 	case "with_images":
-		tweets, err = s.ts.ImageTweetsByUserID(userId)
+		tweets, err = s.ts.ImageTweetsByUserID(userId, offset)
 		if err != nil {
 			errs.ReturnError(w, r, err)
 		}
 	case "liked":
-		tweets, err = s.ts.LikedTweetsByUserID(userId)
+		tweets, err = s.ts.LikedTweetsByUserID(userId, offset)
 		if err != nil {
 			errs.ReturnError(w, r, err)
 		}
@@ -120,7 +137,7 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Get the counts of replies, retweets and likes of the tweet.
-		if err = s.SetTweetAssociationCounts(&tweets[i]); err != nil{
+		if err = s.SetTweetAssociationCounts(&tweets[i]); err != nil {
 			errs.ReturnError(w, r, err)
 			return
 		}
@@ -156,7 +173,7 @@ func (s *Server) handleGetTweet(w http.ResponseWriter, r *http.Request) {
 	authedUser := s.getUserFromContext(r.Context())
 
 	// Get the counts of replies, retweets and likes of the tweet.
-	if err = s.SetTweetAssociationCounts(tweet); err != nil{
+	if err = s.SetTweetAssociationCounts(tweet); err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
@@ -176,7 +193,7 @@ func (s *Server) handleGetTweet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Get the counts of replies, retweets and likes of the tweet's replies.
-		if err = s.SetTweetAssociationCounts(&tweet.Replies[i]); err != nil{
+		if err = s.SetTweetAssociationCounts(&tweet.Replies[i]); err != nil {
 			errs.ReturnError(w, r, err)
 			return
 		}
@@ -356,7 +373,7 @@ func (s *Server) SetTweetUserAssociationBools(authUserId int, tweet *domain.Twee
 	if tweet.RepliesTo != nil {
 		s.SetTweetUserAssociationBools(authUserId, tweet.RepliesTo)
 	}
-	
+
 	if tweet.RetweetsTweet != nil {
 		s.SetTweetUserAssociationBools(authUserId, tweet.RetweetsTweet)
 	}

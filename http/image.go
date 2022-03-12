@@ -55,9 +55,9 @@ func (s *Server) handleUploadUserImages(w http.ResponseWriter, r *http.Request) 
 	// Parse it into an Image object.
 	img := &domain.Image{
 		OwnerType: domain.OwnerTypeUser,
-		OwnerID: user.ID,
-		File: image,
-		Filename: imageHeader.Filename,
+		OwnerID:   user.ID,
+		File:      image,
+		Filename:  imageHeader.Filename,
 	}
 
 	// Save the image to disk (includes validation / normalization).
@@ -77,6 +77,12 @@ func (s *Server) handleUploadUserImages(w http.ResponseWriter, r *http.Request) 
 	// Update the user record in the database.
 	err = s.us.Update(r.Context(), user)
 	if err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
+
+	// Get the number of tweets, followers and followeds of the user.
+	if err = s.SetUserAssociationCounts(user); err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
@@ -131,8 +137,8 @@ func (s *Server) handleDeleteUserImages(w http.ResponseWriter, r *http.Request) 
 	// Create an Image object.
 	img := &domain.Image{
 		OwnerType: domain.OwnerTypeUser,
-		OwnerID: user.ID,
-		Filename: filename,
+		OwnerID:   user.ID,
+		Filename:  filename,
 	}
 
 	// Delete the image.
@@ -224,9 +230,9 @@ func (s *Server) handleUploadTweetImages(w http.ResponseWriter, r *http.Request)
 		// Parse it into an Image object.
 		img := &domain.Image{
 			OwnerType: domain.OwnerTypeTweet,
-			OwnerID: id,
-			File: file,
-			Filename: fileHeader.Filename,
+			OwnerID:   id,
+			File:      file,
+			Filename:  fileHeader.Filename,
 		}
 		// Save the image to disk (includes validation / normalization).
 		err = s.is.Create(img)

@@ -18,32 +18,32 @@ import (
 // Retweets can have none. If Retweet gets Replies or Retweets, those will reference the Tweet
 // that the Retweet has retweeted. // TODO: Add validation to ensure this.
 type Tweet struct {
-	ID int `json:"id"`
-	UserID int `json:"user_id" gorm:"notNull;index"`
-	User User `json:"user"`
+	ID      int    `json:"id"`
+	UserID  int    `json:"user_id" gorm:"notNull;index"`
+	User    User   `json:"user"`
 	Content string `json:"content"`
 
 	// TODO: When to use omitempty?
-	RepliesToID *int `json:"replies_to_id,omitempty" gorm:"default:null"`
-	RepliesTo *Tweet `json:"replies_to,omitempty" gorm:"foreignKey:RepliesToID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
-	Replies []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`
-	RepliesCount int `json:"replies_count" gorm:"-"`
-	AuthReplied bool `json:"auth_replied" gorm:"-"`
+	RepliesToID  *int    `json:"replies_to_id,omitempty" gorm:"default:null"`
+	RepliesTo    *Tweet  `json:"replies_to,omitempty" gorm:"foreignKey:RepliesToID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
+	Replies      []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`
+	RepliesCount int     `json:"replies_count" gorm:"-"`
+	AuthReplied  bool    `json:"auth_replied" gorm:"-"`
 
-	RetweetsID *int `json:"retweets_id,omitempty" gorm:"default:null"`
-	RetweetsTweet *Tweet `json:"retweets_tweet,omitempty" gorm:"foreignKey:RetweetsID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
-	Retweets []Tweet `json:"retweets" gorm:"foreignKey:RetweetsID"`
-	RetweetsCount int `json:"retweets_count" gorm:"-"`
-	AuthRetweet *Tweet `json:"auth_retweet,omitempty" gorm:"foreignKey:RetweetsID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
+	RetweetsID    *int    `json:"retweets_id,omitempty" gorm:"default:null"`
+	RetweetsTweet *Tweet  `json:"retweets_tweet,omitempty" gorm:"foreignKey:RetweetsID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
+	Retweets      []Tweet `json:"retweets" gorm:"foreignKey:RetweetsID"`
+	RetweetsCount int     `json:"retweets_count" gorm:"-"`
+	AuthRetweet   *Tweet  `json:"auth_retweet,omitempty" gorm:"foreignKey:RetweetsID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
 
-	Likes []Like `json:"likes" gorm:"foreignKey:TweetID"`
-	LikesCount int `json:"likes_count" gorm:"-"`
-	AuthLike *Like `json:"auth_like,omitempty" gorm:"foreignKey:TweetID;references:ID"`
+	Likes      []Like `json:"likes" gorm:"foreignKey:TweetID"`
+	LikesCount int    `json:"likes_count" gorm:"-"`
+	AuthLike   *Like  `json:"auth_like,omitempty" gorm:"foreignKey:TweetID;references:ID"`
 
 	Images []Image `json:"images" gorm:"-"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
@@ -51,12 +51,12 @@ type Tweet struct {
 type TweetService interface {
 	Index(offset int) ([]Tweet, error)
 	ByID(id int) (*Tweet, error)
-	ByUserID(userId int) ([]Tweet, error)
 
+	ByUserID(userId, offset int) ([]Tweet, error)
 	// TODO: Rename, these are Originals AND Retweets.
-	OriginalsByUserID(userId int) ([]Tweet, error)
-	ImageTweetsByUserID(userId int) ([]Tweet, error)
-	LikedTweetsByUserID(userId int) ([]Tweet, error)
+	OriginalsByUserID(userId, offset int) ([]Tweet, error)
+	ImageTweetsByUserID(userId, offset int) ([]Tweet, error)
+	LikedTweetsByUserID(userId, offset int) ([]Tweet, error)
 
 	CountReplies(id int) (int, error)
 	CountRetweets(id int) (int, error)
