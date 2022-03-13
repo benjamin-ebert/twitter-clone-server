@@ -36,8 +36,8 @@ func (s *Server) handleOAuthGithub(w http.ResponseWriter, r *http.Request) {
 
 	// Put it into a cookie, so we can verify it's the same when the user comes back.
 	cookie := http.Cookie{
-		Name: cookieOAuthState,
-		Value: state,
+		Name:     cookieOAuthState,
+		Value:    state,
 		HttpOnly: true,
 	}
 
@@ -130,11 +130,11 @@ func (s *Server) handleOAuthGithubCallback(w http.ResponseWriter, r *http.Reques
 
 	// Create an OAuth object with an associated user.
 	oauth := &domain.OAuth{
-		Provider:     providerGithub,
+		Provider:       providerGithub,
 		ProviderUserID: strconv.FormatInt(*githubUser.ID, 10),
-		TokenType: token.TokenType,
-		AccessToken:  token.AccessToken,
-		RefreshToken: token.RefreshToken,
+		TokenType:      token.TokenType,
+		AccessToken:    token.AccessToken,
+		RefreshToken:   token.RefreshToken,
 		User: domain.User{
 			Name:  name,
 			Email: email,
@@ -153,7 +153,8 @@ func (s *Server) handleOAuthGithubCallback(w http.ResponseWriter, r *http.Reques
 
 	// Redirect them to their profile for now. That will change in the future but
 	// for now it's helpful, since the profile will only show upon successful signIn.
-	http.Redirect(w, r, "/profile", http.StatusFound)
+	//http.Redirect(w, r, "/profile", http.StatusFound)
+	http.Redirect(w, r, "http://localhost:4200/home", http.StatusFound)
 }
 
 // oauthSignIn takes in a pointer to an oauth object, finds or creates an associated
@@ -197,7 +198,7 @@ func (s *Server) oauthSignIn(w http.ResponseWriter, r *http.Request, oauth *doma
 		// Set the found user to be the one that will be signed in.
 		authedUser = existingUser
 
-	// If there's no oauth record with that Provider and that ProviderUserID...
+		// If there's no oauth record with that Provider and that ProviderUserID...
 	} else if existingOAuth == nil && err == gorm.ErrRecordNotFound {
 
 		// ...look for a user with the email address returned by Github.
@@ -217,7 +218,7 @@ func (s *Server) oauthSignIn(w http.ResponseWriter, r *http.Request, oauth *doma
 			// Set the found user to be the one that will be signed in.
 			authedUser = existingUser
 
-		// If looking for a user with that email returned an error...
+			// If looking for a user with that email returned an error...
 		} else {
 
 			// ...and the error is RecordNotFound, that means they are here for the first time.
@@ -238,14 +239,14 @@ func (s *Server) oauthSignIn(w http.ResponseWriter, r *http.Request, oauth *doma
 				// Set the newly created user to be the one that will be signed in.
 				authedUser = &oauth.User
 
-			// If looking for a user with that email returns any other error...
+				// If looking for a user with that email returns any other error...
 			} else {
 				// ...something went wrong internally.
 				return err
 			}
 		}
 
-	// If looking for an oauth record with that Provider and ProviderUserID returns any other error...
+		// If looking for an oauth record with that Provider and ProviderUserID returns any other error...
 	} else {
 		// ...something went wrong internally.
 		return err
@@ -257,16 +258,16 @@ func (s *Server) oauthSignIn(w http.ResponseWriter, r *http.Request, oauth *doma
 	// The UserService runs password validations before every user-create or update.
 	// Because the user is being signed in with oauth, not with email and password,
 	// their Password field will be empty. That would normally cause the password
-	// validations to fail. NoPasswordNeeded set to true will make them pass.
-	// The field is never stored in the user's database record.
-	// It's set back to false after successful signIn.
+	// validations to fail. Only the field NoPasswordNeeded set to true will make them pass.
+	// That is done inside a validation that runs before the password validations.
+	// It checks if there is an oauth record associated with the user, if no password
+	// hash is supplied, and sets NoPasswordNeeded to true if that's the case.
+	// The NoPasswordNeeded field is never stored in the user's database record.
 	if authedUser != nil {
-		authedUser.NoPasswordNeeded = true
 		err = s.signIn(w, r.Context(), authedUser)
 		if err != nil {
 			return err
 		}
-		authedUser.NoPasswordNeeded = false
 	} else {
 		return errs.Errorf(errs.EINVALID, "Failed to sign you in with that method. Please try a different one.")
 	}

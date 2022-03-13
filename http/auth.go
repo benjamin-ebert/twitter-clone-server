@@ -144,12 +144,12 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		errs.ReturnError(w, r, err)
 		return
 	}
-	
+
 	// Create a new http.Cookie that has an empty remember_token and expires immediately.
 	cookie := http.Cookie{
-		Name: "remember_token",
-		Value: "",
-		Expires: time.Now(),
+		Name:     "remember_token",
+		Value:    "",
+		Expires:  time.Now(),
 		HttpOnly: true,
 	}
 
@@ -210,7 +210,7 @@ func (s *Server) handleRegisterPage(w http.ResponseWriter, r *http.Request) {
 
 // signIn signs a given user in through a cookie and a remember token.
 func (s *Server) signIn(w http.ResponseWriter, ctx context.Context, user *domain.User) error {
-	// If the user doesn't have a remember token, create a new one, 
+	// If the user doesn't have a remember token, create a new one,
 	// assign it to them and update their database record.
 	if user.Remember == "" {
 		token, err := s.us.MakeRememberToken()
@@ -229,9 +229,9 @@ func (s *Server) signIn(w http.ResponseWriter, ctx context.Context, user *domain
 		Name:     "remember_token",
 		Value:    user.Remember,
 		HttpOnly: true,
-		Path: "/",
+		Path:     "/",
 	}
-	
+
 	// Add the cookie to the response. From now the user is being authenticated by reading
 	// the remember token sent back by their browser.
 	http.SetCookie(w, &cookie)

@@ -12,20 +12,20 @@ import (
 // They are returned on most error occasions.
 // More specific errors are defined at the bottom.
 const (
-	ECONFLICT       = "conflict"
-	EINTERNAL       = "internal"
-	EINVALID        = "invalid"
-	ENOTFOUND       = "not_found"
-	EUNAUTHORIZED   = "unauthorized"
+	ECONFLICT     = "conflict"
+	EINTERNAL     = "internal"
+	EINVALID      = "invalid"
+	ENOTFOUND     = "not_found"
+	EUNAUTHORIZED = "unauthorized"
 )
 
 // Mapping of error codes to HTTP status codes.
 var codes = map[string]int{
-	ECONFLICT:       http.StatusConflict,
-	EINVALID:        http.StatusBadRequest,
-	ENOTFOUND:       http.StatusNotFound,
-	EUNAUTHORIZED:   http.StatusUnauthorized,
-	EINTERNAL:       http.StatusInternalServerError,
+	ECONFLICT:     http.StatusConflict,
+	EINVALID:      http.StatusBadRequest,
+	ENOTFOUND:     http.StatusNotFound,
+	EUNAUTHORIZED: http.StatusUnauthorized,
+	EINTERNAL:     http.StatusInternalServerError,
 }
 
 // ReturnError prints & optionally logs an error message.
@@ -135,6 +135,8 @@ const (
 	RememberHashEmpty privateError = "AUTH: the user's remember hash is an empty string."
 	// RememberTooShort is returned when a remember token is shorter than 32 bytes.
 	RememberTooShort privateError = "AUTH: the user's remember token must be at least 32 bytes."
+	// NoOAuthOrPassword is returned when a user has neither a password nor an oauth record.
+	NoOAuthOrPassword privateError = "AUTH: the user has no password and not oauth record."
 )
 
 type privateError string

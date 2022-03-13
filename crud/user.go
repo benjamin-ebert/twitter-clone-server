@@ -29,8 +29,8 @@ type UserService struct {
 // On success, it passes the data on to userGorm.
 // Otherwise, it returns the error of the validation that has failed.
 type userValidator struct {
-	hmac HMAC
-	pepper string
+	hmac       HMAC
+	pepper     string
 	emailRegex *regexp.Regexp
 	userGorm
 }
@@ -46,8 +46,8 @@ type userGorm struct {
 func NewUserService(db *gorm.DB, hmacKey, pepper string) *UserService {
 	return &UserService{
 		userValidator{
-			hmac:     newHMAC(hmacKey),
-			pepper:   pepper,
+			hmac:       newHMAC(hmacKey),
+			pepper:     pepper,
 			emailRegex: regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
 			userGorm: userGorm{
 				db: db,
@@ -74,7 +74,7 @@ func (uv *userValidator) Authenticate(email, password string) (*domain.User, err
 
 	// Append a predefined pepper to the submitted password, hash it, and compare the result to the
 	// password hash stored in the user's database record. If they match, the submitted password is correct.
-	err = bcrypt.CompareHashAndPassword([]byte(found.PasswordHash), []byte(password + uv.pepper))
+	err = bcrypt.CompareHashAndPassword([]byte(found.PasswordHash), []byte(password+uv.pepper))
 	if err != nil {
 		if err == bcrypt.ErrMismatchedHashAndPassword {
 			return nil, errs.Errorf(errs.EINVALID, "The password is incorrect.")
@@ -131,6 +131,7 @@ func (uv *userValidator) Create(ctx context.Context, user *domain.User) error {
 func (uv *userValidator) Update(ctx context.Context, user *domain.User) error {
 	// TODO: Add max name / handle / bio length validation?
 	err := runUserValFns(user,
+		uv.passwordHashOrOAuthRequired,
 		uv.passwordMinLength,
 		uv.passwordBcrypt,
 		uv.passwordHashRequired,
@@ -141,7 +142,7 @@ func (uv *userValidator) Update(ctx context.Context, user *domain.User) error {
 		uv.emailRequired,
 		uv.emailFormat,
 		uv.emailIsAvail,
-		)
+	)
 	if err != nil {
 		return err
 	}
@@ -300,6 +301,25 @@ func (uv *userValidator) rememberSetIfUnset(user *domain.User) error {
 	return nil
 }
 
+// passwordHashOrOAuthRequired checks if the user's PasswordHash is empty and NoPasswordNeeded
+// is set to false. In that case no update should be possible and subsequent password
+// hash validations will fail. However, before passing on it checks if there is an
+// oauth record associated with that user. If there is one, that means the user is signed
+// in with oauth and does not need a password. It then sets user's NoPasswordNeeded
+// field to true, to make subsequent password validations pass.
+func (uv *userValidator) passwordHashOrOAuthRequired(user *domain.User) error {
+	if user.PasswordHash == "" && user.NoPasswordNeeded == false {
+		var oauth *domain.OAuth
+		uv.db.Where("user_id = ?", user.ID).First(&oauth)
+		if oauth != nil {
+			user.NoPasswordNeeded = true
+			return nil
+		}
+		return errs.NoOAuthOrPassword
+	}
+	return nil
+}
+
 // ByID retrieves a User database record by ID, along with its associated Tweets, Likes, Followers
 // and "Followeds" (users whom the user is following), along with their most relevant associations.
 // TODO: Only original tweets + relations, and followers and followeds without relations OR just count?
@@ -340,7 +360,7 @@ func (ug *userGorm) ByRemember(rememberHash string) (*domain.User, error) {
 func (ug *userGorm) Search(searchTerm string) []domain.User {
 	var users []domain.User
 	query := "SELECT id, name, handle, bio, avatar FROM users " +
-		"WHERE (name ILIKE '%"+ searchTerm + "%' " +
+		"WHERE (name ILIKE '%" + searchTerm + "%' " +
 		"OR handle ILIKE '%" + searchTerm + "%') " +
 		"AND deleted_at IS NULL"
 	ug.db.Raw(query).Scan(&users)

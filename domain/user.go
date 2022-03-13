@@ -18,18 +18,18 @@ import (
 // for his avatar and one image for his header-picture. The two columns hold the
 // paths to the stored images on the server.
 type User struct {
-	ID int `json:"id"`
-	Email string `json:"email" gorm:"notNull;uniqueIndex"`
-	Name string `json:"name"` // TODO: Not null
-	Handle string `json:"handle"` // TODO: Not null, index?
-	Bio string `json:"bio"` // TODO: Maxlength here or in validation?
-	Avatar string `json:"avatar"`
-	Header string `json:"header"`
+	ID         int     `json:"id"`
+	Email      string  `json:"email" gorm:"notNull;uniqueIndex"`
+	Name       string  `json:"name"`   // TODO: Not null
+	Handle     string  `json:"handle"` // TODO: Not null, index?
+	Bio        string  `json:"bio"`    // TODO: Maxlength here or in validation?
+	Avatar     string  `json:"avatar"`
+	Header     string  `json:"header"`
 	AuthFollow *Follow `json:"auth_follow,omitempty" gorm:"foreignKey:FollowedID;references:ID"`
 
-	Password string `json:"password" gorm:"-"`
+	Password     string `json:"password" gorm:"-"`
 	PasswordHash string `json:"password_hash"`
-	Remember string `json:"remember" gorm:"-"`
+	Remember     string `json:"remember" gorm:"-"`
 	RememberHash string `json:"remember_hash" gorm:"notNull;uniqueIndex"`
 
 	// If NoPasswordNeeded ist true on a User object, the database record
@@ -37,17 +37,17 @@ type User struct {
 	// It's set to true when a user signs in using oauth.
 	NoPasswordNeeded bool `json:"no_password_needed" gorm:"-"`
 
-	OAuths []OAuth `json:"o_auths" gorm:"foreignKey:UserID"`
-	Tweets []Tweet `json:"tweets" gorm:"foreignKey:UserID"`
-	TweetCount int `json:"tweet_count" gorm:"-"`
-	Likes []Like `json:"likes" gorm:"foreignKey:UserID"`
-	Followers []Follow `json:"followers" gorm:"foreignKey:FollowedID"`
-	FollowerCount int `json:"follower_count" gorm:"-"`
-	Followeds []Follow `json:"follows" gorm:"foreignKey:FollowerID"`
-	FollowedCount int `json:"followed_count" gorm:"-"`
+	OAuths        []OAuth  `json:"o_auths" gorm:"foreignKey:UserID"`
+	Tweets        []Tweet  `json:"tweets" gorm:"foreignKey:UserID"`
+	TweetCount    int      `json:"tweet_count" gorm:"-"`
+	Likes         []Like   `json:"likes" gorm:"foreignKey:UserID"`
+	Followers     []Follow `json:"followers" gorm:"foreignKey:FollowedID"`
+	FollowerCount int      `json:"follower_count" gorm:"-"`
+	Followeds     []Follow `json:"follows" gorm:"foreignKey:FollowerID"`
+	FollowedCount int      `json:"followed_count" gorm:"-"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 

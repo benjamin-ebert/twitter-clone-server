@@ -14,7 +14,7 @@ func (s *Server) registerUserRoutes(r *mux.Router) {
 	r.HandleFunc("/profile/{user_id:[0-9]+}", s.requireAuth(s.handleGetProfile)).Methods("GET")
 
 	// Update the user's data.
-	// TODO: Put this into auth.go?
+	// TODO: Put this into auth.go.
 	r.HandleFunc("/profile/update", s.requireAuth(s.handleUpdateProfile)).Methods("PUT")
 
 	// Search for users.
@@ -73,6 +73,7 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO: Add comments.
+// TODO: Put this into auth.go.
 func (s *Server) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	var user domain.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
