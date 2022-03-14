@@ -46,16 +46,19 @@ func (s *Server) registerAuthRoutes(r *mux.Router) {
 
 // TODO: Add useful comment.
 func (s *Server) handleIsLoggedIn(w http.ResponseWriter, r *http.Request) {
+
 	isLoggedIn := false
+
 	if user := s.getUserFromContext(r.Context()); user != nil {
 		isLoggedIn = true
 	}
+
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(&isLoggedIn); err != nil {
+		// TODO: Is that right or should it be ReturnError?
 		errs.LogError(r, err)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
 }
 
 // handleProvideCsrfToken TODO: Add useful comment.
