@@ -22,19 +22,20 @@ func (s *Server) registerTweetRoutes(r *mux.Router) {
 	// or tweets of other users that the user has liked.
 	r.HandleFunc("/tweets/{subset}/{user_id:[0-9]+}/{offset}", s.requireAuth(s.handleGetTweets)).Methods("GET")
 
-	// Create a new tweet / retweet / reply. Which one it is, is decided implicitly based on
-	// the value of tweet's retweets_id / replies_to_id fields.
+	// Create a new tweet / retweet / reply. Which one it is, is determined implicitly
+	// by the value of tweet's retweets_id / replies_to_id fields.
 	r.HandleFunc("/tweet", s.requireAuth(s.handleCreateTweet)).Methods("POST")
 
 	// Delete a tweet.
-	r.HandleFunc("/tweet/delete/{id:[0-9]+}", s.requireAuth(s.handleDeleteTweet)).Methods("DELETE")
+	r.HandleFunc("/tweet/{id:[0-9]+}", s.requireAuth(s.handleDeleteTweet)).Methods("DELETE")
 }
 
-// handleGetFeed loads a limited number of tweets to be displayed on the home screen.
-// The offset parameter determines how many tweets to skip in the database query.
-// The client sets that value based on how many tweets are already being displayed
-// and defaults to 0 on initial load. It calls handleGetFeed whenever the user
-// reaches the bottom of the scrollable feed area, so it's an "infinite scroll" experience.
+// handleGetFeed loads a limited number of tweets to be displayed in the home feed.
+// Limited, because the frontend doesn't want all tweets at once, but loads more
+// tweets as the user scrolls further down. Infinite scroll they call it.
+// The offset parameter indicates how many tweets the frontend already has, and therefore
+// how many tweets we can skip in the database query. It defaults to 0 on initial load.
+// The limit is hard-coded to 10 in the database query, so every load is pretty darn fast.
 func (s *Server) handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	// Parse the offset from the url.
 	offset, err := strconv.Atoi(mux.Vars(r)["offset"])
@@ -46,15 +47,15 @@ func (s *Server) handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	// Get the authenticated user.
 	authedUser := s.getUserFromContext(r.Context())
 
-	// Get the user's feed.
+	// Get 10 more tweets of the user's feed.
 	var feed []domain.Tweet
-	feed, err = s.ts.Index(offset)
+	feed, err = s.ts.GetFeed(offset)
 	if err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
 
-	// Loop over the tweets in the feed and get their images and relevant relations.
+	// Loop over those tweets and get their images and associations with the user.
 	for i, _ := range feed {
 		// Get the retrieved feed' images from the filesystem.
 		if err = s.SetTweetImages(&feed[i]); err != nil {
@@ -67,10 +68,13 @@ func (s *Server) handleGetFeed(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Determine if the authenticated user has retweeted / replied to / liked the tweet or not.
-		s.SetTweetUserAssociationBools(authedUser.ID, &feed[i])
+		if err = s.SetUserTweetAssociationData(authedUser.ID, &feed[i]); err != nil {
+			errs.ReturnError(w, r, err)
+			return
+		}
 	}
 
-	// Return the feed.
+	// Return the ten tweets.
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(feed); err != nil {
 		errs.LogError(r, err)
@@ -78,10 +82,13 @@ func (s *Server) handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleGetTweets gets one of three possible subsets of tweets to be displayed on a user's profile,
-// depending on the value of the subset url parameter. Possible values are "all", "with_images" and "liked".
-// "all" gets all tweets created by the user. "with_images" gets the user's tweets that contain images.
-// "liked" gets all the tweets the user has liked in the past (usually created by other users).
+// handleGetTweets gets one of four possible subsets of tweets to be displayed on a
+// user's profile, depending on the value of the subset url parameter. Possible values
+// are "original", "all", "with_images" and "liked". original means retweets and original
+// tweets of the user. all means all tweets of the user, including replies. with_images
+// means only those tweets of the user that contain images. liked means all tweets the
+// user likes. As with the home feed, these four "profile feeds" are loaded using infinite
+// scroll, hence the offset url parameter. See handleGetFeed for details on that.
 func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 	// Parse the user id from the url.
 	userId, err := strconv.Atoi(mux.Vars(r)["user_id"])
@@ -129,7 +136,7 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Add comment.
+	// Get the tweets' images and association data.
 	for i, _ := range tweets {
 		// Get the retrieved tweets' images from the filesystem.
 		if err = s.SetTweetImages(&tweets[i]); err != nil {
@@ -142,7 +149,10 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Determine if the authenticated user has retweeted / replied to / liked the tweet or not.
-		s.SetTweetUserAssociationBools(authedUser.ID, &tweets[i])
+		if err = s.SetUserTweetAssociationData(authedUser.ID, &tweets[i]); err != nil {
+			errs.ReturnError(w, r, err)
+			return
+		}
 	}
 
 	// Return the tweets.
@@ -153,7 +163,8 @@ func (s *Server) handleGetTweets(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleGetTweet gets one specific tweet, along with its relevant associations and helper data.
+// handleGetTweet gets one specific tweet, along with its replies, images and relevant
+// association data.
 func (s *Server) handleGetTweet(w http.ResponseWriter, r *http.Request) {
 	// Parse the tweet ID from the url.
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
@@ -183,9 +194,12 @@ func (s *Server) handleGetTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Determine if the authenticated user has retweeted / replied to / liked the tweet or not.
-	s.SetTweetUserAssociationBools(authedUser.ID, tweet)
+	if err = s.SetUserTweetAssociationData(authedUser.ID, tweet); err != nil {
+		errs.ReturnError(w, r, err)
+		return
+	}
 
-	// TODO: Add comment.
+	// Get the tweet's replies' images and association data.
 	for i, _ := range tweet.Replies {
 		// Get the retrieved tweets' replies' images from the filesystem.
 		if err = s.SetTweetImages(&tweet.Replies[i]); err != nil {
@@ -198,9 +212,13 @@ func (s *Server) handleGetTweet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Determine if the authenticated user has retweeted / replied to / liked the tweet or not.
-		s.SetTweetUserAssociationBools(authedUser.ID, &tweet.Replies[i])
+		if err = s.SetUserTweetAssociationData(authedUser.ID, &tweet.Replies[i]); err != nil {
+			errs.ReturnError(w, r, err)
+			return
+		}
 	}
 
+	// Return the tweet.
 	w.WriteHeader(http.StatusOK)
 	if err = json.NewEncoder(w).Encode(tweet); err != nil {
 		errs.LogError(r, err)
@@ -208,11 +226,10 @@ func (s *Server) handleGetTweet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleCreateTweet handles the routes:
-// "POST /tweet", "POST /reply/:replies_to_id" and "POST /retweet/:retweets_id".
-// It determines which type of tweet to create by reading the url parameters, and creates a new
-// tweet record in the database. replies_to_id / retweets_id are IDs of an existing tweet.
-// TODO: Update comment.
+// handleCreateTweet handles the routes: "POST /tweet"
+// It reads the tweet data from the posted JSON object, and the user data from the request
+// context, and creates a new tweet record in the database. If the posted JSON has values
+// in the  replies_to_id or retweets_id fields, the new tweet will be a reply / retweet.
 func (s *Server) handleCreateTweet(w http.ResponseWriter, r *http.Request) {
 	// Parse the request's json body into a Tweet object.
 	var tweet domain.Tweet
@@ -240,10 +257,9 @@ func (s *Server) handleCreateTweet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleDeleteTweet handles the route "DELETE /tweet/delete/:id".
+// handleDeleteTweet handles the route "DELETE /tweet/:id".
 // It soft-deletes a tweet and all it's direct replies and retweets, not cascading further.
-// It permanently deletes the tweet's likes and images.
-// TODO: Update comment.
+// It permanently deletes the tweet's and the tweet's replies' images from the filesystem.
 func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 	// Parse the tweet ID from the url.
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
@@ -296,60 +312,74 @@ func (s *Server) handleDeleteTweet(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Return the soft-deleted tweet.
-	// TODO: Only return this on successful deletion
+	// Return Http Status 204 to indicate successful deletion.
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // SetTweetImages takes a pointer to a tweet, finds its images
 // in the filesystem and attaches the resulting Image slice to it.
-// TODO: Put that into the crud/image.go package?
+// If the tweet is a retweet or a reply and therefore has a "parent" tweet,
+// it recursively does the same to the tweet that it retweets / replies to.
 func (s *Server) SetTweetImages(tweet *domain.Tweet) error {
+
+	// Get the tweet's images.
 	images, err := s.is.ByOwner(domain.OwnerTypeTweet, tweet.ID)
 	if err != nil {
 		return err
 	}
 	tweet.Images = images
+
+	// If the tweet is a Reply, get the original tweet's images.
 	if tweet.RepliesTo != nil {
 		if err = s.SetTweetImages(tweet.RepliesTo); err != nil {
 			return err
 		}
 	}
+
+	// If the tweet is a Retweet, get the original tweet's images.
 	if tweet.RetweetsTweet != nil {
 		if err = s.SetTweetImages(tweet.RetweetsTweet); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
-// SetTweetAssociationCounts a pointer to a tweet, counts its replies, retweets
+// SetTweetAssociationCounts takes a pointer to a tweet, counts its replies, retweets
 // and likes and sets those numbers to the according fields.
+// If the tweet is a retweet or a reply and therefore has a "parent" tweet,
+// it recursively does the same to the tweet that it retweets / replies to.
 func (s *Server) SetTweetAssociationCounts(tweet *domain.Tweet) error {
+	// Get the tweet's count of Replies.
 	repliesCount, err := s.ts.CountReplies(tweet.ID)
 	if err != nil {
 		return err
 	}
 	tweet.RepliesCount = repliesCount
 
+	// Get the tweet's count of Retweets.
 	retweetsCount, err := s.ts.CountRetweets(tweet.ID)
 	if err != nil {
 		return err
 	}
 	tweet.RetweetsCount = retweetsCount
 
+	// Get the tweet's count of Likes.
 	likesCount, err := s.ts.CountLikes(tweet.ID)
 	if err != nil {
 		return err
 	}
 	tweet.LikesCount = likesCount
 
+	// If the tweet is a Reply, repeat the above with the original tweet.
 	if tweet.RepliesTo != nil {
 		if err = s.SetTweetAssociationCounts(tweet.RepliesTo); err != nil {
 			return err
 		}
 	}
 
+	// If the tweet is a Retweet, repeat the above with the original tweet.
 	if tweet.RetweetsTweet != nil {
 		if err = s.SetTweetAssociationCounts(tweet.RetweetsTweet); err != nil {
 			return err
@@ -359,22 +389,49 @@ func (s *Server) SetTweetAssociationCounts(tweet *domain.Tweet) error {
 	return nil
 }
 
-// SetTweetUserAssociationBools takes way too long to say out loud, but as programmer I don't talk
-// much anyway. I wanted to be precise here. Takes the ID of the authenticated user and a pointer
-// to a tweet. Then checks if the user likes / has replied / retweeted the tweet, and sets the
-// boolean value for the respective field on the tweet. If the tweet is a reply or a retweet,
-// it recursively does the same to the parent tweet.
-// TODO: Update comment, Rename method.
-func (s *Server) SetTweetUserAssociationBools(authUserId int, tweet *domain.Tweet) {
-	tweet.AuthReplied = s.ts.GetAuthRepliedBool(authUserId, tweet.ID)
-	tweet.AuthLike = s.ts.GetAuthLike(authUserId, tweet.ID)
-	tweet.AuthRetweet = s.ts.GetAuthRetweet(authUserId, tweet.ID)
+// SetUserTweetAssociationData takes way too long to say out loud, but as a programmer
+// I don't talk much anyway. It takes the ID of the authenticated user and a pointer
+// to a tweet, and checks if the user likes / has replied / retweeted the tweet.
+// If the authed user liked or retweeted the tweet, it finds that particular like /
+// retweet, and attaches it to the tweet. A boolean value indicates if the authed user
+// has replied to the tweet. If the tweet is a retweet or a reply and therefore has
+// a "parent" tweet, it recursively does the same to the tweet it retweets / replies to.
+func (s *Server) SetUserTweetAssociationData(authUserId int, tweet *domain.Tweet) error {
 
+	// Get the boolean indicating if the authed user has replied to the tweet.
+	authReplied, err := s.ts.GetAuthRepliedBool(authUserId, tweet.ID)
+	if err != nil {
+		return err
+	}
+	tweet.AuthReplied = authReplied
+
+	// Get the authed user's Like that likes the tweet.
+	authLike, err := s.ts.GetAuthLike(authUserId, tweet.ID)
+	if err != nil {
+		return err
+	}
+	tweet.AuthLike = authLike
+
+	// Get the authed user's Retweet that retweets the tweet.
+	authRetweet, err := s.ts.GetAuthRetweet(authUserId, tweet.ID)
+	if err != nil {
+		return err
+	}
+	tweet.AuthRetweet = authRetweet
+
+	// If the tweet is a Reply, repeat the above with the original tweet.
 	if tweet.RepliesTo != nil {
-		s.SetTweetUserAssociationBools(authUserId, tweet.RepliesTo)
+		if err = s.SetUserTweetAssociationData(authUserId, tweet.RepliesTo); err != nil {
+			return err
+		}
 	}
 
+	// If the tweet is a Retweet, repeat the above with the original tweet.
 	if tweet.RetweetsTweet != nil {
-		s.SetTweetUserAssociationBools(authUserId, tweet.RetweetsTweet)
+		if err = s.SetUserTweetAssociationData(authUserId, tweet.RetweetsTweet); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }

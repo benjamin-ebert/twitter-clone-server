@@ -42,7 +42,7 @@ func NewTweetService(db *gorm.DB) *TweetService {
 }
 
 // Ensure the TweetService struct properly implements the domain.TweetService interface.
-// If it does not, then this expression becomes invalid and won't compile.
+// If it does not, then this expression becomes invalid and the program won't compile.
 var _ domain.TweetService = &TweetService{}
 
 // Create runs validations needed for creating new Tweet database records.
@@ -51,8 +51,8 @@ func (tv *tweetValidator) Create(tweet *domain.Tweet) error {
 		tv.userIdValid,
 		tv.repliedToTweetExists,
 		tv.retweetedTweetExists,
-		// TODO: notAlreadyRetweeted... OR retweetValid, checking for these two an the one above.
-		// TODO: retweetedIsNoRetweet
+		tv.retweetedTweetIsNoRetweet,
+		tv.notAlreadyRetweeted,
 		tv.contentMinLength,
 		tv.contentMaxLength)
 	if err != nil {
@@ -112,6 +112,18 @@ func (tv *tweetValidator) idValid(tweet *domain.Tweet) error {
 	return nil
 }
 
+// notAlreadyRetweeted makes sure that the tweet to be retweeted has not yet been
+// retweeted by the user already. A user can must only retweet a tweet once.
+func (tv *tweetValidator) notAlreadyRetweeted(tweet *domain.Tweet) error {
+	if tweet.RetweetsID != nil {
+		err := tv.tweetGorm.db.First(&domain.Tweet{}, "user_id = ? AND retweets_id = ?", tweet.UserID, tweet.RetweetsID).Error
+		if err == nil {
+			return errs.Errorf(errs.EINVALID, "You already retweeted that tweet.")
+		}
+	}
+	return nil
+}
+
 // repliedToTweetExists makes sure that the Tweet to be replied to actually exists.
 // This check only runs if the incoming Tweet object has a valid ID in its RepliesToID field.
 func (tv *tweetValidator) repliedToTweetExists(tweet *domain.Tweet) error {
@@ -144,6 +156,19 @@ func (tv *tweetValidator) retweetedTweetExists(tweet *domain.Tweet) error {
 	return nil
 }
 
+// retweetedTweetIsNoRetweet makes sure that the tweet to be retweeted isn't a retweet
+// itself. Retweets must not be retweeted. Only originals and replies can be retweeted.
+func (tv *tweetValidator) retweetedTweetIsNoRetweet(tweet *domain.Tweet) error {
+	if tweet.RetweetsID != nil {
+		var original domain.Tweet
+		tv.tweetGorm.db.First(&original, "id = ?", tweet.RetweetsID)
+		if original.RetweetsID != nil {
+			return errs.Errorf(errs.EINVALID, "You cannot retweet a retweet.")
+		}
+	}
+	return nil
+}
+
 // userIdValid ensures that the userId is not empty.
 func (tv *tweetValidator) userIdValid(tweet *domain.Tweet) error {
 	if tweet.UserID <= 0 {
@@ -152,11 +177,12 @@ func (tv *tweetValidator) userIdValid(tweet *domain.Tweet) error {
 	return nil
 }
 
-// TODO: Add comment.
-// TODO: Make this more relevant to the user?
-func (tg *tweetGorm) Index(offset int) ([]domain.Tweet, error) {
+// GetFeed loads 10 tweets to be displayed on the home feed. The frontend makes request
+// for more tweets whenever the user reaches the bottom scrolling down. The offset
+// is the number of tweets that are already visible in the feed, which means they don't
+// need to be queried again. The tweets are loaded with their relevant associations.
+func (tg *tweetGorm) GetFeed(offset int) ([]domain.Tweet, error) {
 	var feed []domain.Tweet
-	// TODO: Limit? Random order? Dynamic offset for faster initial load and endless scroll?
 	err := tg.db.
 		Preload("User").
 		Preload("RepliesTo.User").
@@ -191,14 +217,15 @@ func (tg *tweetGorm) ByID(id int) (*domain.Tweet, error) {
 	return &tweet, nil
 }
 
-// TODO: Add comment.
+// ByUserID finds the specified user's tweets, retweets and replies.
+// It also takes an offset and uses a limit, because these tweets are loaded and
+// displayed incrementally as people scroll further down the user's profile.
 func (tg *tweetGorm) ByUserID(userId, offset int) ([]domain.Tweet, error) {
 	var tweets []domain.Tweet
 	err := tg.db.
 		Where("user_id = ?", userId).
 		Preload("User").
 		Preload("RepliesTo.User").
-		//Preload("RepliesTo.RetweetsTweet.User").
 		Preload("RetweetsTweet.User").
 		Preload("RetweetsTweet.RepliesTo.User").
 		Order("created_at desc").
@@ -211,13 +238,14 @@ func (tg *tweetGorm) ByUserID(userId, offset int) ([]domain.Tweet, error) {
 	return tweets, nil
 }
 
-// TODO: Rename this to OrignalsAndRetweets and add comments.
+// OriginalsByUserID finds the specified user's tweets and retweets.
+// It also takes an offset and uses a limit, because these tweets are loaded and
+// displayed incrementally as people scroll further down the user's profile.
 func (tg *tweetGorm) OriginalsByUserID(userId, offset int) ([]domain.Tweet, error) {
 	var tweets []domain.Tweet
 	err := tg.db.
 		Where("user_id = ?", userId).
 		Where("replies_to_id IS NULL").
-		//Where("retweets_id IS NULL").
 		Preload("User").
 		Preload("RetweetsTweet.User").
 		Preload("RetweetsTweet.RepliesTo.User").
@@ -231,7 +259,9 @@ func (tg *tweetGorm) OriginalsByUserID(userId, offset int) ([]domain.Tweet, erro
 	return tweets, nil
 }
 
-// TODO: Add comment.
+// ImageTweetsByUserID finds the specified user's tweets that contain images.
+// It also takes an offset and uses a limit, because these tweets are loaded and
+// displayed incrementally as people scroll further down the user's profile.
 func (tg *tweetGorm) ImageTweetsByUserID(userId, offset int) ([]domain.Tweet, error) {
 	files, err := ioutil.ReadDir(domain.ImagesBaseDir + "/" + domain.OwnerTypeTweet + "/")
 	if err != nil {
@@ -262,7 +292,9 @@ func (tg *tweetGorm) ImageTweetsByUserID(userId, offset int) ([]domain.Tweet, er
 	return tweets, nil
 }
 
-// TODO: Add comment.
+// LikedTweetsByUserID finds all tweets that the user with the specified id likes.
+// It also takes an offset and uses a limit, because these tweets are loaded and
+// displayed incrementally as people scroll further down the user's profile.
 func (tg *tweetGorm) LikedTweetsByUserID(userId, offset int) ([]domain.Tweet, error) {
 	var tweets []domain.Tweet
 	err := tg.db.
@@ -280,17 +312,8 @@ func (tg *tweetGorm) LikedTweetsByUserID(userId, offset int) ([]domain.Tweet, er
 	return tweets, nil
 }
 
-// TODO: Add comment.
-func (tg *tweetGorm) CountRetweets(id int) (int, error) {
-	var count int64
-	err := tg.db.Model(&domain.Tweet{}).Where("retweets_id = ?", id).Count(&count).Error
-	if err != nil {
-		return 0, err
-	}
-	return int(count), nil
-}
-
-// TODO: Add comment.
+// CountReplies takes a tweet ID, counts that tweet's Replies and returns the
+// integer result and a nil error. If there is an error, it returns 0 and the error.
 func (tg *tweetGorm) CountReplies(id int) (int, error) {
 	var count int64
 	err := tg.db.Model(&domain.Tweet{}).Where("replies_to_id = ?", id).Count(&count).Error
@@ -300,7 +323,19 @@ func (tg *tweetGorm) CountReplies(id int) (int, error) {
 	return int(count), nil
 }
 
-// TODO: Add comment.
+// CountRetweets takes a tweet ID, counts that tweet's Retweets and returns the
+// integer result  and a nil error. If there is an error, it returns 0 and the error.
+func (tg *tweetGorm) CountRetweets(id int) (int, error) {
+	var count int64
+	err := tg.db.Model(&domain.Tweet{}).Where("retweets_id = ?", id).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// CountLikes takes a tweet ID, counts that tweet's Likes and returns the
+// integer result and a nil error. If there is an error, it returns 0 and the error.
 func (tg *tweetGorm) CountLikes(id int) (int, error) {
 	var count int64
 	err := tg.db.Model(&domain.Like{}).Where("tweet_id = ?", id).Count(&count).Error
@@ -312,33 +347,46 @@ func (tg *tweetGorm) CountLikes(id int) (int, error) {
 
 // GetAuthRepliedBool takes a user ID and a tweet ID and returns a boolean expressing whether
 // the given user has replied to the given tweet.
-func (tg *tweetGorm) GetAuthRepliedBool(userId, tweetId int) bool {
-	var count int64
-	tg.db.Model(&domain.Tweet{}).Where("user_id = ? AND replies_to_id = ?", userId, tweetId).Count(&count)
-	if count > 0 {
-		return true
+func (tg *tweetGorm) GetAuthRepliedBool(userId, tweetId int) (bool, error) {
+	var authReply domain.Tweet
+	err := tg.db.First(&authReply, "user_id = ? AND replies_to_id = ?", userId, tweetId).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, nil
+		}
+		return false, err
 	}
-	return false
+	return true, nil
 }
 
-// TODO: Add comment.
-func (tg *tweetGorm) GetAuthRetweet(userId, tweetId int) *domain.Tweet {
+// GetAuthRetweet takes a user ID and a tweet ID. It looks for a retweet that belongs
+// to the specified user, and that retweets the specified tweet.
+// It returns a pointer to that retweet if it exists, otherwise it returns nil.
+func (tg *tweetGorm) GetAuthRetweet(userId, tweetId int) (*domain.Tweet, error) {
 	var retweet domain.Tweet
 	err := tg.db.Where("user_id = ? AND retweets_id = ?", userId, tweetId).First(&retweet).Error
 	if err != nil {
-		return nil
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
 	}
-	return &retweet
+	return &retweet, nil
 }
 
-// TODO: Add comment.
-func (tg *tweetGorm) GetAuthLike(userId, tweetId int) *domain.Like {
+// GetAuthLike takes a user ID and a tweet ID. It looks for a Like that belongs
+// to the specified user, and that likes the specified tweet.
+// It returns a pointer to that Like if it exists, otherwise it returns nil.
+func (tg *tweetGorm) GetAuthLike(userId, tweetId int) (*domain.Like, error) {
 	var like domain.Like
 	err := tg.db.Where("user_id = ? AND tweet_id = ?", userId, tweetId).First(&like).Error
 	if err != nil {
-		return nil
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
 	}
-	return &like
+	return &like, nil
 }
 
 // Create stores the data from the Tweet object in a new database record.

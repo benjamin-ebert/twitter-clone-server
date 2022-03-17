@@ -6,35 +6,38 @@ import (
 )
 
 // Tweet represents a tweet. It always has a one-to-many relationship with
-// a User. It can also have the following relationships:
+// the User who created it. It can also have the following relationships:
+// - A many-to-many rel. with Likes (which in a sense is a "pivot" to users).
 // - A self-referential many-to-many rel. with other Tweets. That happens
 // if the Tweet gets retweeted or replied to, or if the Tweet itself is a reply
 // or a retweet of an existing tweet. In that case the rel. is determined by
-// the RepliesToID / RetweetsID, which hold the ID of the existing "target" tweet.
-// If both are null, the Tweet is an "original" Tweet (neither reply nor retweet).
-// - A many-to-many rel. with users, through the "pivot" of Likes.
-// - A one-to-many rel. with images, since up to 4 images can be attached to a Tweet.
-// Originals can have both Replies and Retweets. Replies can also have Replies and Retweets.
-// Retweets can have none. If Retweet gets Replies or Retweets, those will reference the Tweet
-// that the Retweet has retweeted. // TODO: Add validation to ensure this.
+// the RepliesToID / RetweetsID, which hold the ID of the existing "parent" tweet.
+// If both are null, the Tweet is an "original" Tweet (neither a reply nor a retweet).
+// Originals can have both Replies and Retweets. Same goes for Replies. Retweets can
+// have none. If a Retweet gets Replies or Retweets, those will reference the "parent"
+// of the Retweet.
+// - A kind of one-to-many rel. with images, since Originals or Replies can have up
+// to four images attached to them. However, it's not a relationship in the traditional
+// "database-sense", since tweet images have no representation in the database.
+// They are only stored in the filesystem. Which tweet they belong to is resolved through
+// the path of their location in the filesystem.
 type Tweet struct {
 	ID      int    `json:"id"`
 	UserID  int    `json:"user_id" gorm:"notNull;index"`
 	User    User   `json:"user"`
 	Content string `json:"content"`
 
-	// TODO: When to use omitempty?
 	RepliesToID  *int    `json:"replies_to_id,omitempty" gorm:"default:null"`
-	RepliesTo    *Tweet  `json:"replies_to,omitempty" gorm:"foreignKey:RepliesToID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
+	RepliesTo    *Tweet  `json:"replies_to,omitempty" gorm:"foreignKey:RepliesToID;references:ID"`
 	Replies      []Tweet `json:"replies" gorm:"foreignKey:RepliesToID"`
 	RepliesCount int     `json:"replies_count" gorm:"-"`
 	AuthReplied  bool    `json:"auth_replied" gorm:"-"`
 
 	RetweetsID    *int    `json:"retweets_id,omitempty" gorm:"default:null"`
-	RetweetsTweet *Tweet  `json:"retweets_tweet,omitempty" gorm:"foreignKey:RetweetsID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
+	RetweetsTweet *Tweet  `json:"retweets_tweet,omitempty" gorm:"foreignKey:RetweetsID;references:ID"`
 	Retweets      []Tweet `json:"retweets" gorm:"foreignKey:RetweetsID"`
 	RetweetsCount int     `json:"retweets_count" gorm:"-"`
-	AuthRetweet   *Tweet  `json:"auth_retweet,omitempty" gorm:"foreignKey:RetweetsID;references:ID"` // Pointer, otherwise invalid recursive Type Tweet.
+	AuthRetweet   *Tweet  `json:"auth_retweet,omitempty" gorm:"foreignKey:RetweetsID;references:ID"`
 
 	Likes      []Like `json:"likes" gorm:"foreignKey:TweetID"`
 	LikesCount int    `json:"likes_count" gorm:"-"`
@@ -49,11 +52,10 @@ type Tweet struct {
 
 // TweetService is a set of methods to manipulate and work with the Tweet model.
 type TweetService interface {
-	Index(offset int) ([]Tweet, error)
 	ByID(id int) (*Tweet, error)
-
 	ByUserID(userId, offset int) ([]Tweet, error)
-	// TODO: Rename, these are Originals AND Retweets.
+
+	GetFeed(offset int) ([]Tweet, error)
 	OriginalsByUserID(userId, offset int) ([]Tweet, error)
 	ImageTweetsByUserID(userId, offset int) ([]Tweet, error)
 	LikedTweetsByUserID(userId, offset int) ([]Tweet, error)
@@ -62,10 +64,9 @@ type TweetService interface {
 	CountRetweets(id int) (int, error)
 	CountLikes(id int) (int, error)
 
-	// TODO: Return an error if there is one?
-	GetAuthRepliedBool(authedUserId, tweetId int) bool
-	GetAuthRetweet(authUserId, tweetId int) *Tweet
-	GetAuthLike(authUserId, tweetId int) *Like
+	GetAuthRepliedBool(authedUserId, tweetId int) (bool, error)
+	GetAuthRetweet(authUserId, tweetId int) (*Tweet, error)
+	GetAuthLike(authUserId, tweetId int) (*Like, error)
 
 	Create(tweet *Tweet) error
 	Delete(tweet *Tweet) error
