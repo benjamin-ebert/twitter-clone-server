@@ -226,7 +226,7 @@ func (s *Server) oauthSignIn(w http.ResponseWriter, r *http.Request, oauth *doma
 
 				// Create a new user with the info from Github and NoPasswordNeeded (more on that below).
 				oauth.User.NoPasswordNeeded = true
-				if err := s.us.Create(r.Context(), &oauth.User); err != nil {
+				if err := s.us.Create(&oauth.User); err != nil {
 					return err
 				}
 

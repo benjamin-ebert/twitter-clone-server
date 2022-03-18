@@ -71,7 +71,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create a new user record in the database.
-	err := s.us.Create(r.Context(), &user)
+	err := s.us.Create(&user)
 	if err != nil {
 		errs.ReturnError(w, r, err)
 		return
@@ -136,7 +136,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	user.Remember = token
 
 	// Update the user's record in the database.
-	if err := s.us.Update(r.Context(), user); err != nil {
+	if err := s.us.Update(user); err != nil {
 		errs.ReturnError(w, r, err)
 		return
 	}
@@ -184,7 +184,7 @@ func (s *Server) signIn(w http.ResponseWriter, ctx context.Context, user *domain
 			return err
 		}
 		user.Remember = token
-		err = s.us.Update(ctx, user)
+		err = s.us.Update(user)
 		if err != nil {
 			return err
 		}

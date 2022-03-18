@@ -122,7 +122,7 @@ func (fv *followValidator) notAlreadyFollowed(follow *domain.Follow) error {
 	return nil
 }
 
-// TODO: Add comment.
+// ByID gets a Follow record from the database by id.
 func (fg *followGorm) ByID(id int) (*domain.Follow, error) {
 	var follow domain.Follow
 	err := fg.db.First(&follow, "id = ?", id).Error
@@ -159,14 +159,13 @@ func (fg *followGorm) Delete(follow *domain.Follow) error {
 
 // SuggestFollows takes the id of the authenticated user and returns 10 random users
 // the authed user isn't yet following (excluding deleted users and the authed one).
-// TODO: Return nil in case of error.
 func (fg *followGorm) SuggestFollows(userId int) []domain.User {
 	var suggestions []domain.User
 	query :=
 		"SELECT id, name, handle, avatar FROM users WHERE id NOT IN" +
-		"(SELECT followed_id FROM follows WHERE follower_id = " + strconv.Itoa(userId) + ") " +
-		"AND id != " + strconv.Itoa(userId) + " AND deleted_at IS NULL " +
-		"ORDER BY RANDOM () LIMIT 10"
+			"(SELECT followed_id FROM follows WHERE follower_id = " + strconv.Itoa(userId) + ") " +
+			"AND id != " + strconv.Itoa(userId) + " AND deleted_at IS NULL " +
+			"ORDER BY RANDOM () LIMIT 10"
 	fg.db.Raw(query).Scan(&suggestions)
 	return suggestions
 }

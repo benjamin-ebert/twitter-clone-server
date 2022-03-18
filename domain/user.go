@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"context"
 	"gorm.io/gorm"
 	"time"
 )
@@ -20,9 +19,9 @@ import (
 type User struct {
 	ID         int     `json:"id"`
 	Email      string  `json:"email" gorm:"notNull;uniqueIndex"`
-	Name       string  `json:"name"`   // TODO: Not null
-	Handle     string  `json:"handle"` // TODO: Not null, index?
-	Bio        string  `json:"bio"`    // TODO: Maxlength here or in validation?
+	Name       string  `json:"name" gorm:"notNull"`
+	Handle     string  `json:"handle" gorm:"notNull"`
+	Bio        string  `json:"bio"`
 	Avatar     string  `json:"avatar"`
 	Header     string  `json:"header"`
 	AuthFollow *Follow `json:"auth_follow,omitempty" gorm:"foreignKey:FollowedID;references:ID"`
@@ -68,14 +67,11 @@ type UserService interface {
 	ByRemember(token string) (*User, error)
 
 	Search(searchTerm string) []User
-
 	CountTweets(userId int) (int, error)
 	CountFollowers(userId int) (int, error)
 	CountFolloweds(userId int) (int, error)
+	GetAuthFollow(authUserId, userId int) (*Follow, error)
 
-	// TODO: Return an error if there is one?
-	GetAuthFollow(authUserId, userId int) *Follow
-
-	Create(ctx context.Context, user *User) error
-	Update(ctx context.Context, user *User) error
+	Create(user *User) error
+	Update(user *User) error
 }

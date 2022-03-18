@@ -121,7 +121,7 @@ func (lv *likeValidator) userIdValid(like *domain.Like) error {
 	return nil
 }
 
-// TODO: Add comment.
+// ByID gets a Like record from the database by id.
 func (lg *likeGorm) ByID(id int) (*domain.Like, error) {
 	var like domain.Like
 	err := lg.db.First(&like, "id = ?", id).Error
@@ -134,19 +134,6 @@ func (lg *likeGorm) ByID(id int) (*domain.Like, error) {
 	}
 	return &like, nil
 }
-
-// ByUserID retrieves all likes of a user, along with the Tweet belonging to each Like.
-//func (lg *likeGorm) ByUserID(userId int) ([]domain.Like, error) {
-//	var likes []domain.Like
-//	err := lg.db.
-//		Where("user_id = ?", userId).
-//		Preload("Tweet.User").
-//		Find(&likes).Error
-//	if err != nil {
-//		return nil, err
-//	}
-//	return likes, nil
-//}
 
 // Create stores the data from the Like object in a new database record.
 // On success, it eager-loads (preloads) the tweet relation, so that

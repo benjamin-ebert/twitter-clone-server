@@ -41,8 +41,8 @@ func ReturnError(w http.ResponseWriter, r *http.Request, err error) {
 
 	// Print user message to response.
 	w.WriteHeader(ErrorStatusCode(code))
-	// TODO: Remove this entirely?
-	//json.NewEncoder(w).Encode(&ErrorResponse{Error: message})
+
+	// Return the error.
 	json.NewEncoder(w).Encode(&message)
 }
 
@@ -94,12 +94,6 @@ func Errorf(code string, format string, args ...interface{}) *Error {
 		Message: fmt.Sprintf(format, args...),
 	}
 }
-
-// TODO: Remove this entirely?
-// ErrorResponse represents a JSON structure for error output.
-//type ErrorResponse struct {
-//	Error string `json:"error"`
-//}
 
 // LogError logs an error with the HTTP route information.
 func LogError(r *http.Request, err error) {

@@ -80,6 +80,5 @@ func (s *Server) handleDeleteLike(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return the soft-deleted like.
-	// TODO: Only return this on successful deletion
 	w.WriteHeader(http.StatusNoContent)
 }

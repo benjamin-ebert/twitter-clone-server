@@ -1,7 +1,6 @@
 package crud
 
 import (
-	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -106,7 +105,7 @@ func (uv *userValidator) ByRemember(token string) (*domain.User, error) {
 
 // Create runs validations needed for creating new User database records.
 // It will create a remember token if none is provided.
-func (uv *userValidator) Create(ctx context.Context, user *domain.User) error {
+func (uv *userValidator) Create(user *domain.User) error {
 	err := runUserValFns(user,
 		uv.passwordRequired,
 		uv.passwordMinLength,
@@ -119,17 +118,22 @@ func (uv *userValidator) Create(ctx context.Context, user *domain.User) error {
 		uv.emailNormalize,
 		uv.emailRequired,
 		uv.emailFormat,
-		uv.emailIsAvail)
+		uv.emailIsAvail,
+		uv.nameRequired,
+		uv.nameMaxLength,
+		uv.handleNormalize,
+		uv.handleRequired,
+		uv.handleMaxLength,
+		uv.bioMaxLength)
 	if err != nil {
 		return err
 	}
-	return uv.userGorm.Create(ctx, user)
+	return uv.userGorm.Create(user)
 }
 
 // Update runs validations needed for updating a User record in the database.
 // It will hash a remember token if it is provided (and will not return an error if it's not).
-func (uv *userValidator) Update(ctx context.Context, user *domain.User) error {
-	// TODO: Add max name / handle / bio length validation?
+func (uv *userValidator) Update(user *domain.User) error {
 	err := runUserValFns(user,
 		uv.passwordHashOrOAuthRequired,
 		uv.passwordMinLength,
@@ -142,11 +146,16 @@ func (uv *userValidator) Update(ctx context.Context, user *domain.User) error {
 		uv.emailRequired,
 		uv.emailFormat,
 		uv.emailIsAvail,
-	)
+		uv.nameRequired,
+		uv.nameMaxLength,
+		uv.handleNormalize,
+		uv.handleRequired,
+		uv.handleMaxLength,
+		uv.bioMaxLength)
 	if err != nil {
 		return err
 	}
-	return uv.userGorm.Update(ctx, user)
+	return uv.userGorm.Update(user)
 }
 
 // runUserValFns runs any number of functions of type userValFn on the passed in User object.
@@ -162,6 +171,14 @@ func runUserValFns(user *domain.User, fns ...userValFn) error {
 
 // A userValFn is any function that takes in a pointer to a domain.User object and returns an error.
 type userValFn func(user *domain.User) error
+
+// bioMaxLength makes sure that the provided bio is not longer than 160 characters.
+func (uv *userValidator) bioMaxLength(user *domain.User) error {
+	if utf8.RuneCountInString(user.Bio) > 160 {
+		return errs.Errorf(errs.EINVALID, "The bio must not have more than 160 characters.")
+	}
+	return nil
+}
 
 // emailFormat makes sure that a provided email address matches a predefined regex pattern.
 func (uv *userValidator) emailFormat(user *domain.User) error {
@@ -202,6 +219,44 @@ func (uv *userValidator) emailNormalize(user *domain.User) error {
 func (uv *userValidator) emailRequired(user *domain.User) error {
 	if user.Email == "" {
 		return errs.Errorf(errs.EINVALID, "An email address is required.")
+	}
+	return nil
+}
+
+// handleMaxLength makes sure that the provided handle is not longer than 15 characters.
+func (uv *userValidator) handleMaxLength(user *domain.User) error {
+	if utf8.RuneCountInString(user.Handle) > 15 {
+		return errs.Errorf(errs.EINVALID, "The handle must not have more than 15 characters.")
+	}
+	return nil
+}
+
+// handleNormalize converts the handle to all lowercase and trims its whitespaces.
+func (uv *userValidator) handleNormalize(user *domain.User) error {
+	user.Handle = strings.TrimSpace(user.Handle)
+	return nil
+}
+
+// handleRequired makes sure that the handle is not the empty string.
+func (uv *userValidator) handleRequired(user *domain.User) error {
+	if user.Handle == "" {
+		return errs.Errorf(errs.EINVALID, "A handle is required.")
+	}
+	return nil
+}
+
+// nameMaxLength makes sure that the provided name is not longer than 15 characters.
+func (uv *userValidator) nameMaxLength(user *domain.User) error {
+	if utf8.RuneCountInString(user.Name) > 15 {
+		return errs.Errorf(errs.EINVALID, "The name must not have more than 15 characters.")
+	}
+	return nil
+}
+
+// nameRequired makes sure that the name is not the empty string.
+func (uv *userValidator) nameRequired(user *domain.User) error {
+	if user.Name == "" {
+		return errs.Errorf(errs.EINVALID, "A name is required.")
 	}
 	return nil
 }
@@ -322,7 +377,6 @@ func (uv *userValidator) passwordHashOrOAuthRequired(user *domain.User) error {
 
 // ByID retrieves a User database record by ID, along with its associated Tweets, Likes, Followers
 // and "Followeds" (users whom the user is following), along with their most relevant associations.
-// TODO: Only original tweets + relations, and followers and followeds without relations OR just count?
 func (ug *userGorm) ByID(id int) (*domain.User, error) {
 	var user domain.User
 	err := ug.db.First(&user, "id = ?", id).Error
@@ -356,7 +410,6 @@ func (ug *userGorm) ByRemember(rememberHash string) (*domain.User, error) {
 
 // Search takes a search term, looks for users whose name or handle are similar to the term,
 // and returns those users, populating only the fields needed for proper search results display.
-// TODO: Return nil in case of error.
 func (ug *userGorm) Search(searchTerm string) []domain.User {
 	var users []domain.User
 	query := "SELECT id, name, handle, bio, avatar FROM users " +
@@ -367,7 +420,8 @@ func (ug *userGorm) Search(searchTerm string) []domain.User {
 	return users
 }
 
-// TODO: Add comment.
+// CountTweets takes a user ID, counts that user's Tweets and returns the integer
+// result and a nil error. If there is an error, it returns 0 and the error.
 func (ug *userGorm) CountTweets(userId int) (int, error) {
 	var count int64
 	err := ug.db.Model(&domain.Tweet{}).Where("user_id = ?", userId).Count(&count).Error
@@ -399,18 +453,24 @@ func (ug *userGorm) CountFolloweds(userId int) (int, error) {
 	return int(count), nil
 }
 
-// TODO: Add comment.
-func (ug *userGorm) GetAuthFollow(authUserId, userId int) *domain.Follow {
+// GetAuthFollow takes the ID of the authenticated user and the ID of a second user.
+// It looks for a Follow where the follower is the authed user and the followed
+// is the second user. It returns a pointer to that Follow if it exists, otherwise
+// it returns nil.
+func (ug *userGorm) GetAuthFollow(authUserId, userId int) (*domain.Follow, error) {
 	var follow domain.Follow
 	err := ug.db.Where("follower_id = ? AND followed_id = ?", authUserId, userId).First(&follow).Error
 	if err != nil {
-		return nil
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
 	}
-	return &follow
+	return &follow, nil
 }
 
 // Create stores the data from the User object in a new database record.
-func (ug *userGorm) Create(ctx context.Context, user *domain.User) error {
+func (ug *userGorm) Create(user *domain.User) error {
 	err := ug.db.Create(user).Error
 	if err != nil {
 		return err
@@ -419,7 +479,7 @@ func (ug *userGorm) Create(ctx context.Context, user *domain.User) error {
 }
 
 // Update saves changes to an existing user record in the database.
-func (ug *userGorm) Update(ctx context.Context, user *domain.User) error {
+func (ug *userGorm) Update(user *domain.User) error {
 	return ug.db.Save(user).Error
 }
 

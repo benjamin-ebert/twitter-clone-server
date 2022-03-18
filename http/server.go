@@ -36,18 +36,18 @@ func NewServer(
 	isProd bool,
 	github *oauth2.Config,
 	services *crud.Services,
-	) *Server {
+) *Server {
 
 	// Construct a new Server with a gorilla router and the services passed in.
 	s := &Server{
 		isProd: isProd,
 		github: github,
-		us: services.User,
-		os: services.OAuth,
-		ts: services.Tweet,
-		fs: services.Follow,
-		ls: services.Like,
-		is: services.Image,
+		us:     services.User,
+		os:     services.OAuth,
+		ts:     services.Tweet,
+		fs:     services.Follow,
+		ls:     services.Like,
+		is:     services.Image,
 		router: mux.NewRouter(),
 	}
 
@@ -69,7 +69,7 @@ func NewServer(
 	s.router.PathPrefix("/images/").Handler(http.StripPrefix("/images/", imageHandler))
 
 	// Construct the CSRF protection middleware.
-	// A new CSRF tokens is issued when the client GETs /csrf or /login.
+	// A new CSRF tokens is issued when the client makes a GET request to /csrf.
 	csrfAuthKey := make([]byte, 32)
 	if _, err := rand.Read(csrfAuthKey); err != nil {
 		panic(err)
@@ -96,5 +96,5 @@ func setContentTypeJSON(next http.Handler) http.Handler {
 // Run starts to listen and serve on the specified port.
 func (s *Server) Run(port int) {
 	// 0.0.0.0 instead of localhost, so the proxy for the Angular SPA works properly.
-	log.Fatal(http.ListenAndServe("0.0.0.0:" + strconv.Itoa(port), s.router))
+	log.Fatal(http.ListenAndServe("0.0.0.0:"+strconv.Itoa(port), s.router))
 }

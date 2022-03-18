@@ -133,9 +133,8 @@ func (og *oauthGorm) Find(userId int, provider string) (*domain.OAuth, error) {
 // a provider's system. The identifier is sent by an oauth provider after a user authorized
 // this app's access on their provider profile. It's used to check if someone with that identifier
 // on that provider has previously signed in here, which is true if an oauth record with that
-// data exists. Usually, the record's user_id is then used to identify the user in our database.
+// data exists. The record's user_id would then be used to identify the user in our database.
 // It returns a pointer to an oauth object or an error.
-// TODO: Remove ByProviderUserId and handle the case with Find and functional options?
 func (og *oauthGorm) ByProviderUserId(provider, providerUserId string) (*domain.OAuth, error) {
 	var oauth domain.OAuth
 	err := og.db.
