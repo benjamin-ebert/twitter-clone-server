@@ -72,7 +72,7 @@ func (s *Server) handleDeleteLike(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Soft-delete the like.
+	// Delete the like.
 	err = s.ls.Delete(like)
 	if err != nil {
 		errs.ReturnError(w, r, err)

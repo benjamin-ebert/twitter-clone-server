@@ -24,7 +24,7 @@ func (s *Server) registerFollowRoutes(r *mux.Router) {
 func (s *Server) handleGetSuggestions(w http.ResponseWriter, r *http.Request) {
 	// Parse the User ID from the url.
 	userId, err := strconv.Atoi(mux.Vars(r)["user_id"])
-	if userId <=0 || err != nil{
+	if userId <= 0 || err != nil {
 		errs.ReturnError(w, r, errs.Errorf(errs.EINVALID, "Invalid Id format."))
 		return
 	}
@@ -90,7 +90,7 @@ func (s *Server) handleDeleteFollow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Soft-delete the follow.
+	// Delete the follow.
 	err = s.fs.Delete(follow)
 	if err != nil {
 		errs.ReturnError(w, r, err)
@@ -98,6 +98,5 @@ func (s *Server) handleDeleteFollow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return the soft-deleted follow.
-	// TODO: Only return this on successful deletion
 	w.WriteHeader(http.StatusNoContent)
 }

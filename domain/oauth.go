@@ -30,8 +30,6 @@ type OAuth struct {
 }
 
 type OAuthService interface {
-	// TODO: Rename this to ByUserId.
-	Find(userId int, provider string) (*OAuth, error)
 	ByProviderUserId(provider, providerUserId string) (*OAuth, error)
 	Create(oauth *OAuth) error
 	Update(oauth *OAuth) error

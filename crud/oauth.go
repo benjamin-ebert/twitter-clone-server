@@ -113,22 +113,6 @@ func (ov *oauthValidator) userIdValid(oauth *domain.OAuth) error {
 	return nil
 }
 
-// Find takes a user id and the name of an oauth provider, looks for an oauth record with that
-// data, and returns a pointer to an oauth object. It's used to check if a given user has
-// previously signed in with a specific provider. Every user has only one associated oauth
-// record per provider (only one Github record, one Google record, one Facebook record etc.)
-func (og *oauthGorm) Find(userId int, provider string) (*domain.OAuth, error) {
-	var oauth domain.OAuth
-	err := og.db.
-		Where("user_id = ?", userId).
-		Where("provider = ?", provider).
-		First(&oauth).Error
-	if err != nil {
-		return nil, err
-	}
-	return &oauth, nil
-}
-
 // ByProviderUserId takes the name of an oauth provider and a unique identifier of a user in
 // a provider's system. The identifier is sent by an oauth provider after a user authorized
 // this app's access on their provider profile. It's used to check if someone with that identifier
