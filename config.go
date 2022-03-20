@@ -8,12 +8,13 @@ import (
 
 // Config represents a set of configurations needed to run the app.
 type Config struct {
-	Port int `json:"port"`
-	Env string `json:"env"`
-	Pepper string `json:"pepper"`
-	HMACKey string `json:"hmac_key"`
-	Database PostgresConfig `json:"database"`
-	Github OAuthConfig `json:"github"`
+	Port      int            `json:"port"`
+	Env       string         `json:"env"`
+	ClientUrl string         `json:"client_url"`
+	Pepper    string         `json:"pepper"`
+	HMACKey   string         `json:"hmac_key"`
+	Database  PostgresConfig `json:"database"`
+	Github    OAuthConfig    `json:"github"`
 }
 
 // IsProd determines if we're in a production environment or not. The resulting boolean is used
@@ -24,11 +25,11 @@ func (c Config) IsProd() bool {
 
 // PostgresConfig represents configurations needed to connect to a postgres database.
 type PostgresConfig struct {
-	Host string `json:"host"`
-	Port int `json:"port"`
-	User string `json:"user"`
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	User     string `json:"user"`
 	Password string `json:"password"`
-	Name string `json:"name"`
+	Name     string `json:"name"`
 }
 
 // ConnectionInfo returns a PostgresConfig object's values as a string formatted to be
@@ -43,11 +44,12 @@ func (pc PostgresConfig) ConnectionInfo() string {
 // DefaultConfig returns a Config object populated with default dev environment configuration values.
 func DefaultConfig() Config {
 	return Config{
-		Port:    1111,
-		Env:     "dev",
-		Pepper:  "secret-random-string",
-		HMACKey: "secret-hmac-key",
-		Database: DefaultPostgresConfig(),
+		Port:      1111,
+		Env:       "dev",
+		ClientUrl: "http://localhost:4200",
+		Pepper:    "secret-random-string",
+		HMACKey:   "secret-hmac-key",
+		Database:  DefaultPostgresConfig(),
 	}
 }
 
@@ -66,11 +68,11 @@ func DefaultPostgresConfig() PostgresConfig {
 // OAuthConfig is a template to hold provider-specific OAuth configuration.
 // The actual credentials for each OAuth provider are in .conf.json.
 type OAuthConfig struct {
-	ID string `json:"id"`
-	Secret string `json:"secret"`
+	ID          string `json:"id"`
+	Secret      string `json:"secret"`
 	RedirectURL string `json:"redirect_url"`
-	AuthURL string `json:"auth_url"`
-	TokenURL string `json:"token_url"`
+	AuthURL     string `json:"auth_url"`
+	TokenURL    string `json:"token_url"`
 }
 
 // LoadConfig tries to load production configuration data from a .config.json file,

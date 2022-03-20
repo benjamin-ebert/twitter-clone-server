@@ -151,10 +151,8 @@ func (s *Server) handleOAuthGithubCallback(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Redirect them to their profile for now. That will change in the future but
-	// for now it's helpful, since the profile will only show upon successful signIn.
-	//http.Redirect(w, r, "/profile", http.StatusFound)
-	http.Redirect(w, r, "http://localhost:4200", http.StatusFound)
+	// Redirect them to the client app.
+	http.Redirect(w, r, s.clientUrl, http.StatusFound)
 }
 
 // oauthSignIn takes in a pointer to an oauth object, finds or creates an associated

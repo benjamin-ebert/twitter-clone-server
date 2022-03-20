@@ -45,11 +45,11 @@ func main() {
 		ClientID:     config.Github.ID,
 		ClientSecret: config.Github.Secret,
 		RedirectURL:  config.Github.RedirectURL,
-		Endpoint: github.Endpoint,
+		Endpoint:     github.Endpoint,
 	}
 
 	// Set up a webserver.
-	server := http.NewServer(config.IsProd(), githubOAuth, services)
+	server := http.NewServer(config.IsProd(), config.ClientUrl, githubOAuth, services)
 
 	// Serve the app.
 	server.Run(config.Port)

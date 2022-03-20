@@ -1,6 +1,7 @@
 {
   "port": 1111,
   "env": "dev",
+  "client_url": "http://localhost:4200",
   "pepper": "secret-random-string",
   "hmac_key": "secret-hmac-key",
 

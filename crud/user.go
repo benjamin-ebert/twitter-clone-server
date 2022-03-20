@@ -121,8 +121,8 @@ func (uv *userValidator) Create(user *domain.User) error {
 		uv.emailIsAvail,
 		uv.nameRequired,
 		uv.nameMaxLength,
-		uv.handleNormalize,
 		uv.handleRequired,
+		uv.handleNormalize,
 		uv.handleMaxLength,
 		uv.bioMaxLength)
 	if err != nil {
@@ -148,8 +148,8 @@ func (uv *userValidator) Update(user *domain.User) error {
 		uv.emailIsAvail,
 		uv.nameRequired,
 		uv.nameMaxLength,
-		uv.handleNormalize,
 		uv.handleRequired,
+		uv.handleNormalize,
 		uv.handleMaxLength,
 		uv.bioMaxLength)
 	if err != nil {
@@ -233,13 +233,19 @@ func (uv *userValidator) handleMaxLength(user *domain.User) error {
 
 // handleNormalize converts the handle to all lowercase and trims its whitespaces.
 func (uv *userValidator) handleNormalize(user *domain.User) error {
-	user.Handle = strings.TrimSpace(user.Handle)
+	user.Handle = strings.ReplaceAll(user.Handle, " ", "")
 	return nil
 }
 
 // handleRequired makes sure that the handle is not the empty string.
+// If it is, it checks if the user is signed in with oauth. Since in that case
+// they don't get to assign a handle, it generates on from the oauth username.
 func (uv *userValidator) handleRequired(user *domain.User) error {
 	if user.Handle == "" {
+		if user.NoPasswordNeeded == true {
+			user.Handle = strings.ToLower(user.Name)
+			return nil
+		}
 		return errs.Errorf(errs.EINVALID, "A handle is required.")
 	}
 	return nil

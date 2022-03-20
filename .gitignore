@@ -3,9 +3,20 @@
 .idea/workspace.xml
 **/.idea/workspace.xml
 
-# mac hidden files
+# Mac hidden files
 .DS_Store
 
+# Compiled app
 wtfTwtDebug
+
+# Persistent
 images/**
+
+# Configuration & Deploy
 .config.json
+/.config_production.json
+/Caddyfile
+/scripts/release.sh
+
+# Notes
+/notes.md
