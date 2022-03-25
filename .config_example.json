@@ -10,13 +10,13 @@
     "port": 5432,
     "user": "postgres",
     "password": "",
-    "name": "wtf_twitter"
+    "name": "twitter_clone"
   },
 
   "github": {
     "id": "The id string github gave you after setting up a new oauth app in your account.",
     "secret": "The secret string github gave you after setting up a new oauth app in your account.",
-    "redirect_url": "The url of your app that github should redirect the user to, after they authorized their github account.",
+    "redirect_url": "http://localhost:1111/api/oauth/github/callback",
     "auth_url": "https://github.com/login/oauth/authorize",
     "token_url": "https://github.com/login/oauth/access_token"
   }

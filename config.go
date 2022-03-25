@@ -61,7 +61,7 @@ func DefaultPostgresConfig() PostgresConfig {
 		Port:     5432,
 		User:     "postgres",
 		Password: "",
-		Name:     "wtf_twitter",
+		Name:     "twitter_clone",
 	}
 }
 
