@@ -28,7 +28,7 @@ As of now it contains the following features:
 ### 1. Client App
 First clone the [client frontend](https://github.com/benjamin-ebert/twitter-clone-client).
 Make sure you have the [Angular CLI](https://angular.io/cli) installed, then `cd` into 
-the project root of the client app and run `ng serve`. By default, the client app will
+the project root of the client app. Run `npm install` and then `ng serve`. By default, the client app will
 run on [http://localhost:4200/](http://localhost:4200/).
 
 ### 2. Database Connection
