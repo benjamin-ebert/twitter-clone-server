@@ -2,7 +2,7 @@
 
 This is the server backend of a simplified replication of the Twitter web app.
 It does not aim to ship the full functionality of Twitter's backend, but tries to
-provide the most important parts of it in order to be usable.
+provide the most features in order to be usable.
 No web-framework was used. Third party packages used are [go-gorm/gorm](https://github.com/go-gorm/gorm), [gorilla/mux](https://github.com/gorilla/mux)
 and [gorilla/csrf](https://github.com/gorilla/csrf). It works with a Postgres database.
 The client frontend is built with Angular and can be found [here](https://github.com/benjamin-ebert/twitter-clone-client).
