@@ -301,6 +301,7 @@ func (tg *tweetGorm) LikedTweetsByUserID(userId, offset int) ([]domain.Tweet, er
 		Joins("JOIN likes ON likes.tweet_id=tweets.id").
 		Where("likes.user_id = ?", userId).
 		Preload("User").
+		Preload("RepliesTo.User").
 		Order("created_at desc").
 		Offset(offset).
 		Limit(10).
